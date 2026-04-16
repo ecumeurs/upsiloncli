@@ -42,14 +42,14 @@ func RunFarm(baseURL string, reg *endpoint.Registry, scriptPaths []string, logDi
 
 	go func() {
 		sig := <-sigChan
-		ts := time.Now().UTC().Format(time.RFC3339)
+		ts := time.Now().UTC().Format("2006-01-02T15:04:05.000Z07:00")
 		fmt.Printf("\n[{%s}] [Farm] Received %v. Interrupting agents for cleanup...\n", ts, sig)
 		triggerInterrupt(fmt.Sprintf("interrupted by %v", sig))
 	}()
 
 	if timeoutSecs > 0 {
 		time.AfterFunc(time.Duration(timeoutSecs)*time.Second, func() {
-			ts := time.Now().UTC().Format(time.RFC3339)
+			ts := time.Now().UTC().Format("2006-01-02T15:04:05.000Z07:00")
 			fmt.Printf("\n[{%s}] [Farm] Global timeout reached (%ds). Triggering teardown...\n", ts, timeoutSecs)
 			triggerInterrupt(fmt.Sprintf("global timeout (%ds) reached", timeoutSecs))
 		})
@@ -67,7 +67,7 @@ func RunFarm(baseURL string, reg *endpoint.Registry, scriptPaths []string, logDi
 				// Ensure log directory exists (absolute path for reliability)
 				absLogDir, _ := filepath.Abs(logDir)
 				if err := os.MkdirAll(absLogDir, 0755); err != nil {
-					ts := time.Now().UTC().Format(time.RFC3339)
+					ts := time.Now().UTC().Format("2006-01-02T15:04:05.000Z07:00")
 					fmt.Printf("[{%s}] [Farm] Error creating log directory %s: %v\n", ts, absLogDir, err)
 					logger = os.Stdout
 				} else {
@@ -75,14 +75,14 @@ func RunFarm(baseURL string, reg *endpoint.Registry, scriptPaths []string, logDi
 					logPath := filepath.Join(absLogDir, fileName)
 					f, err := os.Create(logPath)
 					if err != nil {
-						ts := time.Now().UTC().Format(time.RFC3339)
+						ts := time.Now().UTC().Format("2006-01-02T15:04:05.000Z07:00")
 						fmt.Printf("[{%s}] [Farm] Error creating log file at %s: %v\n", ts, logPath, err)
 						logger = os.Stdout
 					} else {
 						logger = f
 						defer f.Close()
 						if !quiet {
-							ts := time.Now().UTC().Format(time.RFC3339)
+							ts := time.Now().UTC().Format("2006-01-02T15:04:05.000Z07:00")
 							fmt.Printf("[{%s}] [%s] Logging to %s\n", ts, agentID, logPath)
 						}
 					}
@@ -114,7 +114,7 @@ func RunFarm(baseURL string, reg *endpoint.Registry, scriptPaths []string, logDi
 					// Execute the JS teardown function safely
 					_, err := agent.TeardownHook(goja.Undefined())
 					if err != nil {
-						ts := time.Now().UTC().Format(time.RFC3339)
+						ts := time.Now().UTC().Format("2006-01-02T15:04:05.000Z07:00")
 						fmt.Fprintf(logger, "[{%s}] [%s] JS Teardown hook failed: %v\n", ts, agentID, err)
 					}
 				}
@@ -124,14 +124,14 @@ func RunFarm(baseURL string, reg *endpoint.Registry, scriptPaths []string, logDi
 			
 			scriptData, err := os.ReadFile(scriptPath)
 			if err != nil {
-				ts := time.Now().UTC().Format(time.RFC3339)
+				ts := time.Now().UTC().Format("2006-01-02T15:04:05.000Z07:00")
 				fmt.Fprintf(logger, "[{%s}] [%s] Error reading script: %v\n", ts, agentID, err)
 				return
 			}
 
 			_, err = agent.VM.RunString(string(scriptData))
 			if err != nil {
-				ts := time.Now().UTC().Format(time.RFC3339)
+				ts := time.Now().UTC().Format("2006-01-02T15:04:05.000Z07:00")
 				if jsErr, ok := err.(*goja.Exception); ok {
 					fmt.Fprintf(logger, "[{%s}] [%s] JS Exception: %v\n", ts, agentID, jsErr.String())
 				} else {
@@ -139,12 +139,12 @@ func RunFarm(baseURL string, reg *endpoint.Registry, scriptPaths []string, logDi
 				}
 			}
 			
-			ts := time.Now().UTC().Format(time.RFC3339)
+			ts := time.Now().UTC().Format("2006-01-02T15:04:05.000Z07:00")
 			fmt.Fprintf(logger, "[{%s}] [%s] Script execution finished.\n", ts, agentID)
 		}(i, path)
 	}
 
 	wg.Wait()
-	ts := time.Now().UTC().Format(time.RFC3339)
+	ts := time.Now().UTC().Format("2006-01-02T15:04:05.000Z07:00")
 	fmt.Printf("[{%s}] All agents have finished execution and cleanup.\n", ts)
 }

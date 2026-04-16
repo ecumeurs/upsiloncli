@@ -1,20 +1,11 @@
-// Upsilon Bot: SLOW Multi-Agent Battle Agent (Stress Test with Human Delays)
+// Upsilon Bot: 2v2 PVE Battle Agent
 // Adheres to [[rule_password_policy]]: 15+ chars, 1 uppercase, 1 digit, 1 special symbol
 
 const botId = Math.floor(Math.random() * 100000);
-const accountName = "bot_slow_" + botId;
+const accountName = "bot_pve_2v2_" + botId;
 const password = "VeryLongBotPassword123!";
-const gameMode = upsilon.getEnv("UPSILON_GAME_MODE") || "1v1_PVP";
-
-// Determine expected agents based on game mode
-let expectedAgents = 2; // Default to 1v1
-if (gameMode === "2v2_PVP") expectedAgents = 4;
-else if (gameMode === "2v2_PVE") expectedAgents = 2;
-else if (gameMode === "1v1_PVE") expectedAgents = 1;
-
-// 0. Configuration Validation
-upsilon.assert(upsilon.getAgentCount() === expectedAgents, 
-    "Configuration mismatch: Mode " + gameMode + " expects " + expectedAgents + " agents, but " + upsilon.getAgentCount() + " are running.");
+const gameMode = "2v2_PVE";
+const expectedAgents = 2;
 
 // 1. Bootstrap Bot (Handles anti-spam delay, registration, and automatic teardown)
 upsilon.bootstrapBot(accountName, password);
@@ -22,25 +13,19 @@ upsilon.bootstrapBot(accountName, password);
 // 2. [REMOVED pre-matchmaking sync]
 
 // 3. Join Matchmaking and Wait
-upsilon.humanDelay();
 const matchData = upsilon.joinWaitMatch(gameMode);
 const matchId = matchData.match_id;
 
 // 4. Match Verification - Ensure all agents are in the same match
-if (expectedAgents > 1) {
-    upsilon.syncGroup("match_verification", expectedAgents);
-    upsilon.log("Verified match ID: " + matchId);
-} else {
-    upsilon.log("Joined match: " + matchId);
-}
+upsilon.syncGroup("match_verification", expectedAgents);
+upsilon.log("Verified match ID: " + matchId);
 
-// 5. Battle Loop (with human delays)
+// 5. Battle Loop (Streamlined)
 upsilon.log("Entering battle loop...");
 
 while (true) {
-    upsilon.humanDelay();
     const board = upsilon.waitNextTurn();
-    if (!board) break; // Game ended
+    if (!board) break; // Game ended, results logged by helper
 
     executeTacticalLogic(board, matchId);
 }
@@ -53,7 +38,6 @@ function executeTacticalLogic(board, matchId) {
 
     const enemies = upsilon.myFoesCharacters().filter(e => !e.dead && e.hp > 0);
     if (enemies.length === 0) {
-        upsilon.humanDelay();
         upsilon.call("game_action", { id: matchId, entity_id: actingEntity.id, type: "pass" });
         return;
     }
@@ -66,9 +50,8 @@ function executeTacticalLogic(board, matchId) {
 
     const dist = Math.abs(actingEntity.position.x - nearestEnemy.position.x) + Math.abs(actingEntity.position.y - nearestEnemy.position.y);
 
-    // 1. Attack if adjacent
+    // 1. Attack if adjacent AND we haven't attacked yet (enforced internally too)
     if (dist <= 1 && !actingEntity.has_attacked) {
-        upsilon.humanDelay();
         upsilon.log("Hacking " + nearestEnemy.name + " to death!");
         upsilon.call("game_action", {
             id: matchId,
@@ -76,12 +59,11 @@ function executeTacticalLogic(board, matchId) {
             type: "attack",
             target_coords: nearestEnemy.position.x + "," + nearestEnemy.position.y
         });
-        return;
+        return; // Wait for board update to calculate damage
     }
 
-    // 2. Move toward enemy
+    // 2. Move toward enemy if not adjacent AND we haven't attacked (movement blocked internally if attacked)
     if (dist > 1 && actingEntity.move > 0 && !actingEntity.has_attacked) {
-        upsilon.humanDelay();
         const pathSteps = upsilon.planTravelToward(actingEntity.id, nearestEnemy.position, board);
         if (pathSteps && pathSteps.length > 0) {
             upsilon.log("Homing missile mode: Moving toward " + nearestEnemy.name);
@@ -91,13 +73,12 @@ function executeTacticalLogic(board, matchId) {
                 type: "move",
                 target_coords: pathSteps.map(p => p.x + "," + p.y).join(";")
             });
-            return;
+            return; // Wait for board update to get our new position
         }
     }
 
     // 3. Action economy spent. End turn.
-    upsilon.humanDelay();
-    upsilon.log("Action economy spent. Passing.");
+    upsilon.log("Action economy spent. Passing to next unit.");
     upsilon.call("game_action", { id: matchId, entity_id: actingEntity.id, type: "pass" });
 }
 

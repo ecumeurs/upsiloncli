@@ -479,6 +479,46 @@ func (a *Agent) jsBootstrapBot(call goja.FunctionCall) goja.Value {
 	}
 
 	a.jsLog("Bot bootstrapped successfully.")
+
+	// 4. Automatic Character Renaming to identifiable thematic names
+	// This ensures bots aren't all named "Character 1, 2, 3" which was a common complaint.
+	// We fetch characters and process the response directly as SyncSession may not pick up root arrays.
+	charsData, _ := a.jsCall("profile_characters", nil)
+	
+	botNames := []string{"Slayer", "Warden", "Herald", "Sentinel", "Avenger", "Reaper", "Paladin", "Ranger", "Artificer", "Saboteur"}
+	rand.Shuffle(len(botNames), func(i, j int) { botNames[i], botNames[j] = botNames[j], botNames[i] })
+
+	if chars, ok := charsData.([]interface{}); ok && len(chars) > 0 {
+		for i, item := range chars {
+			char, ok := item.(map[string]interface{})
+			if !ok { continue }
+			
+			id, ok := char["id"].(string)
+			if !ok { continue }
+
+			if i >= len(botNames) {
+				break
+			}
+			
+			newName := botNames[i]
+			// If accountName is short, we can use it as a suffix for better identification
+			// while staying within the 20-character limit of [[rule_character_renaming]]
+			if len(accountName) <= 10 {
+				newName = fmt.Sprintf("%s %s", botNames[i], accountName)
+			}
+
+			if len(newName) > 20 {
+				newName = newName[:20]
+			}
+
+			a.jsLog(fmt.Sprintf("Renaming character %s to %s...", id, newName))
+			a.jsCall("character_rename", map[string]interface{}{
+				"characterId": id,
+				"name":        newName,
+			})
+		}
+	}
+
 	return a.VM.ToValue(resp)
 }
 
@@ -540,7 +580,7 @@ func (a *Agent) jsWaitNextTurn() interface{} {
 				a.hasAttackedThisTurn = true
 			}
 
-			a.jsLog(fmt.Sprintf("--- Resume Turn! Already acting with entity: %v (v%d) ---", board.CurrentEntityID, board.Version))
+			a.jsLog(fmt.Sprintf("--- Resume Turn! Already acting with %s (v%d) ---", a.getTurnLogInfo(board), board.Version))
 			a.lastConsumedVersion = board.Version
 			return a.VM.ToValue(board)
 		}
@@ -554,7 +594,15 @@ func (a *Agent) jsWaitNextTurn() interface{} {
 		}
 
 		if eventName == "game.ended" {
-			a.jsLog("Match termination event received. Exiting battle loop.")
+			winnerMsg := ""
+			if env, ok := eventData.(map[string]interface{}); ok {
+				if data, ok := env["data"].(map[string]interface{}); ok {
+					if winner, exists := data["winner_team_id"]; exists {
+						winnerMsg = fmt.Sprintf(" Winner: Team %v", winner)
+					}
+				}
+			}
+			a.jsLog(fmt.Sprintf("Match termination event received.%s Exiting battle loop.", winnerMsg))
 			a.jsSetContext("match_id", "") // Clear to prevent teardown forfeit
 			return nil
 		}
@@ -566,7 +614,11 @@ func (a *Agent) jsWaitNextTurn() interface{} {
 
 		// Manual check for finished flag inside board.updated
 		if finished, _ := boardMap["game_finished"].(bool); finished {
-			a.jsLog("Match finished flag detected in update. Exiting battle loop.")
+			winnerMsg := ""
+			if winner, exists := boardMap["winner_team_id"]; exists {
+				winnerMsg = fmt.Sprintf(" Winner: Team %v", winner)
+			}
+			a.jsLog(fmt.Sprintf("Match finished flag detected in update.%s Exiting battle loop.", winnerMsg))
 			a.jsSetContext("match_id", "") // Clear to prevent teardown forfeit
 			return nil
 		}
@@ -586,7 +638,7 @@ func (a *Agent) jsWaitNextTurn() interface{} {
 				a.hasAttackedThisTurn = true
 			}
 
-			a.jsLog(fmt.Sprintf("--- My Turn! Acting with entity: %v (v%d) ---", board.CurrentEntityID, board.Version))
+			a.jsLog(fmt.Sprintf("--- My Turn! Acting with %s (v%d) ---", a.getTurnLogInfo(board), board.Version))
 			a.lastConsumedVersion = board.Version
 			return a.VM.ToValue(boardMap)
 		}
@@ -595,30 +647,106 @@ func (a *Agent) jsWaitNextTurn() interface{} {
 	}
 }
 
+func (a *Agent) getTurnLogInfo(board *dto.BoardState) string {
+	if board == nil {
+		return "unknown"
+	}
+	for _, p := range board.Players {
+		for _, e := range p.Entities {
+			if e.ID == board.CurrentEntityID {
+				return fmt.Sprintf("%s (%s, team %d)", e.Name, p.Nickname, p.Team)
+			}
+		}
+	}
+	return fmt.Sprintf("entity: %s", board.CurrentEntityID)
+}
+
 func (a *Agent) jsSyncGroup(key string, count int) {
 	readyKey := key + "_ready"
-	
-	// Atomic increment to avoid race condition in multi-agent farms
+	proceedKey := key + "_proceed"
+	matchIdKey := key + "_match_id"
+
+	myMatchID := a.jsGetContext("match_id")
+
+	// Phase 1: Mark this agent as ready
 	current := a.Shared.AtomicIncrement(readyKey, 1)
+	a.jsLog(fmt.Sprintf("Agent %v ready for sync '%s' (%v/%v)...", a.AgentIndex, key, current, count))
 
-	a.jsLog(fmt.Sprintf("Waiting for syncing group '%s' (%v/%v)...", key, current, count))
+	// If we're the first, set the group's expected match ID
+	if current == 1 {
+		a.Shared.Set(matchIdKey, myMatchID)
+	}
 
-	// Poll until everyone is ready with a 60s timeout
+	// Phase 2: Wait for all agents to be ready
 	start := time.Now()
 	for {
-		if time.Since(start) > 60*time.Second {
-			panic(a.VM.ToValue(fmt.Sprintf("SyncGroup '%s' timed out after 60s", key)))
+		// Check for context cancellation (Ctrl+C)
+		select {
+		case <-a.Ctx.Done():
+			panic(a.VM.ToValue("SyncGroup cancelled: context cancelled"))
+		default:
 		}
 
-		val, _ := a.Shared.Get(readyKey)
-		if val != nil {
+		// Check timeout
+		if time.Since(start) > 60*time.Second {
+			val, _ := a.Shared.Get(readyKey)
+			actualCount := 0
+			if val != nil {
+				if c, ok := val.(int); ok {
+					actualCount = c
+				}
+			}
+			panic(a.VM.ToValue(fmt.Sprintf("SyncGroup '%s' timed out after 60s (got %v/%v agents)", key, actualCount, count)))
+		}
+
+		// Check if all agents are ready
+		val, ok := a.Shared.Get(readyKey)
+		if ok && val != nil {
 			if c, ok := val.(int); ok && c >= count {
+				// ALL READY. Verify match ID consistency before proceeding.
+				expected, ok := a.Shared.Get(matchIdKey)
+				if ok {
+					expectedStr, _ := expected.(string)
+					if myMatchID != expectedStr {
+						panic(a.VM.ToValue(fmt.Sprintf("SyncGroup '%s' failed: Match ID mismatch. Agent %v expected match '%s' but found '%s'.", key, a.AgentIndex, expectedStr, myMatchID)))
+					}
+					a.jsLog(fmt.Sprintf("Match ID verified for sync '%s' (%v/%v). Waiting for proceed signal...", key, c, count))
+				} else {
+					a.jsLog(fmt.Sprintf("All agents ready for sync '%s' (%v/%v). Waiting for proceed signal...", key, c, count))
+				}
 				break
 			}
 		}
-		a.jsSleep(500)
+
+		// Short sleep to avoid busy-waiting (10ms for faster response to Ctrl+C)
+		time.Sleep(10 * time.Millisecond)
 	}
-	a.jsLog(fmt.Sprintf("Group '%s' synchronized. Proceeding.", key))
+
+	// Phase 3: Mark this agent as proceeding (after everyone is ready)
+	current = a.Shared.AtomicIncrement(proceedKey, 1)
+	a.jsLog(fmt.Sprintf("Agent %v proceeding from sync '%s' (%v/%v)...", a.AgentIndex, key, current, count))
+
+	// Phase 4: Wait for all agents to signal proceed
+	for {
+		// Check for context cancellation (Ctrl+C)
+		select {
+		case <-a.Ctx.Done():
+			panic(a.VM.ToValue("SyncGroup cancelled: context cancelled"))
+		default:
+		}
+
+		// Check if all agents have signaled proceed
+		val, ok := a.Shared.Get(proceedKey)
+		if ok && val != nil {
+			if c, ok := val.(int); ok && c >= count {
+				a.jsLog(fmt.Sprintf("Group '%s' fully synchronized. All %v agents proceeding.", key, c))
+				return
+			}
+		}
+
+		// Short sleep to avoid busy-waiting
+		time.Sleep(10 * time.Millisecond)
+	}
 }
 
 func (a *Agent) jsJoinQueue(gameMode string) interface{} {

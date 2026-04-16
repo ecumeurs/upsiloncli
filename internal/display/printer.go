@@ -64,7 +64,7 @@ func (p *Printer) WithQuiet(quiet bool) *Printer {
 // @spec-link [[rule_tracing_logging]]
 // timestamp returns a UTC timestamp in the format required by project standards.
 func (p *Printer) timestamp() string {
-	return fmt.Sprintf("[{%s}] ", time.Now().UTC().Format(time.RFC3339))
+	return fmt.Sprintf("[{%s}] ", time.Now().UTC().Format("2006-01-02T15:04:05.000Z07:00"))
 }
 
 // Curl prints the equivalent curl command for an API request.

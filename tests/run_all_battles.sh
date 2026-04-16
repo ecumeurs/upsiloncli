@@ -4,8 +4,7 @@
 set -e
 
 # Configuration
-CLI="./bin/upsiloncli"
-SCRIPT="samples/pvp_bot_battle.js"
+CLI="${UPSILON_CLI_PATH:-./bin/upsiloncli}"
 LOG_DIR="tests/logs"
 
 # Ensure log directory exists
@@ -20,28 +19,30 @@ fi
 run_test() {
     local mode=$1
     local agents=$2
+    local script=$3
     local log_file="$LOG_DIR/${mode}.log"
-    
+
     echo "--------------------------------------------------"
     echo "TESTING MODE: $mode (Agents: $agents)"
+    echo "SCRIPT: $script"
     echo "--------------------------------------------------"
-    
+
     # Construct paths array for the farm
     local paths=""
     for i in $(seq 1 "$agents"); do
-        paths="$paths $SCRIPT"
+        paths="$paths $script"
     done
-    
+
     # Set environment variable for the bot script
     export UPSILON_GAME_MODE="$mode"
-    
+
     # Cleanup state before every run to ensure isolation
     cd .. && ./zombie_killer.sh && ./clear_matches.sh && cd upsiloncli
-    
+
     # Run the farm and capture output
     echo "Running arena..."
     timeout 300 $CLI --farm $paths > "$log_file" 2>&1 || true
-    
+
     # 1. Basic Health Check (Success indicators)
     if grep -q "Game Over! Winner:" "$log_file" || grep -q "STALEMATE" "$log_file"; then
         echo -e "\033[32m[OK]\033[0m Match concluded naturally."
@@ -63,11 +64,11 @@ run_test() {
     echo ""
 }
 
-# Run the battery of tests
-run_test "1v1_PVE" 1
-run_test "2v2_PVE" 2
-run_test "1v1_PVP" 2
-run_test "2v2_PVP" 4
+# Run the battery of tests with game-specific scripts
+run_test "1v1_PVE" 1 "samples/pve_1v1_battle.js"
+run_test "2v2_PVE" 2 "samples/pve_2v2_battle.js"
+run_test "1v1_PVP" 2 "samples/pvp_1v1_battle.js"
+run_test "2v2_PVP" 4 "samples/pvp_2v2_battle.js"
 
 echo "=================================================="
 echo -e "\033[32m\033[1mALL BATTLES PASSED AND LOGS ARE CLEAN!\033[0m"

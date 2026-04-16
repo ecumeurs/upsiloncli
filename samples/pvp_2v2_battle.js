@@ -1,23 +1,35 @@
-// Upsilon Bot: PvP Battle Agent (Refactored with Internal Turn Memory)
+// Upsilon Bot: 2v2 PVP Battle Agent
 // Adheres to [[rule_password_policy]]: 15+ chars, 1 uppercase, 1 digit, 1 special symbol
 
 const botId = Math.floor(Math.random() * 100000);
-const accountName = "bot_pvp_" + botId;
+const accountName = "bot_pvp_2v2_" + botId;
 const password = "VeryLongBotPassword123!";
+const gameMode = "2v2_PVP";
+const expectedAgents = 4;
+
+// 0. Configuration Validation
+upsilon.assert(upsilon.getAgentCount() === expectedAgents, 
+    "Configuration mismatch: 2v2 PVP expects 4 agents (2 teams of 2), but " + upsilon.getAgentCount() + " are running.");
 
 // 1. Bootstrap Bot (Handles anti-spam delay, registration, and automatic teardown)
 upsilon.bootstrapBot(accountName, password);
 
-// 2. Join Matchmaking and Wait
-const matchData = upsilon.joinWaitMatch("1v1_PVP");
+// 2. [REMOVED pre-matchmaking sync]
+
+// 3. Join Matchmaking and Wait
+const matchData = upsilon.joinWaitMatch(gameMode);
 const matchId = matchData.match_id;
 
-// 3. Battle Loop (Streamlined)
+// 4. Match Verification - Ensure all agents are in the same match
+upsilon.syncGroup("match_verification", expectedAgents);
+upsilon.log("Verified match ID: " + matchId);
+
+// 5. Battle Loop
 upsilon.log("Entering battle loop...");
 
 while (true) {
     const board = upsilon.waitNextTurn();
-    if (!board) break; // Game ended, results logged by helper
+    if (!board) break; // Game ended
 
     executeTacticalLogic(board, matchId);
 }
@@ -42,7 +54,7 @@ function executeTacticalLogic(board, matchId) {
 
     const dist = Math.abs(actingEntity.position.x - nearestEnemy.position.x) + Math.abs(actingEntity.position.y - nearestEnemy.position.y);
 
-    // 1. Attack if adjacent AND we haven't attacked yet (enforced internally too)
+    // 1. Attack if adjacent
     if (dist <= 1 && !actingEntity.has_attacked) {
         upsilon.log("Hacking " + nearestEnemy.name + " to death!");
         upsilon.call("game_action", {
@@ -51,10 +63,10 @@ function executeTacticalLogic(board, matchId) {
             type: "attack",
             target_coords: nearestEnemy.position.x + "," + nearestEnemy.position.y
         });
-        return; // Wait for board update to calculate damage
+        return;
     }
 
-    // 2. Move toward enemy if not adjacent AND we haven't attacked (movement blocked internally if attacked)
+    // 2. Move toward enemy
     if (dist > 1 && actingEntity.move > 0 && !actingEntity.has_attacked) {
         const pathSteps = upsilon.planTravelToward(actingEntity.id, nearestEnemy.position, board);
         if (pathSteps && pathSteps.length > 0) {
@@ -65,12 +77,12 @@ function executeTacticalLogic(board, matchId) {
                 type: "move",
                 target_coords: pathSteps.map(p => p.x + "," + p.y).join(";")
             });
-            return; // Wait for board update to get our new position
+            return;
         }
     }
 
     // 3. Action economy spent. End turn.
-    upsilon.log("Action economy spent. Passing to next unit.");
+    upsilon.log("Action economy spent. Passing.");
     upsilon.call("game_action", { id: matchId, entity_id: actingEntity.id, type: "pass" });
 }
 
