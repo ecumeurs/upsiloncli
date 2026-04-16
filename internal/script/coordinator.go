@@ -35,7 +35,7 @@ func RunFarm(baseURL string, reg *endpoint.Registry, scriptPaths []string, logDi
 		for _, a := range agents {
 			// Interrupt the VM execution. This causes RunString and any blocking bridge 
 			// calls (like sleep or waitForEvent) to return with an error.
-			a.VM.Interrupt(fmt.Errorf(reason))
+			a.VM.Interrupt(fmt.Errorf("%s", reason))
 		}
 		agentsMu.Unlock()
 	}
