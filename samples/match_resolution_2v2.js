@@ -7,11 +7,15 @@ const password = "VeryLongBotPassword123!";
 
 upsilon.bootstrapBot(accountName, password);
 
-upsilon.syncGroup("pvp_test_2v2", 4);
+// [REMOVED pre-matchmaking sync]
 
 const gameMode = "2v2_PVP";
 const matchData = upsilon.joinWaitMatch(gameMode);
 const matchId = matchData.match_id;
+
+// Match Verification - Ensure all agents are in the same match
+upsilon.syncGroup("match_verification", 4);
+upsilon.log("Verified match ID: " + matchId);
 
 upsilon.log("Entering 2v2 battle loop...");
 

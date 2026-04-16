@@ -65,7 +65,31 @@ Characters exposed via `upsilon.currentCharacter()` or `upsilon.myCharacters()` 
 
 ---
 
-### **4. Running Your Scripts**
+### **4. Coordination Patterns**
+
+When multiple agents run in the same farm, use `syncGroup` and `sharedMemory` to coordinate.
+
+#### **Sharing a Match ID (Barrier Pattern)**
+```javascript
+const agentCount = upsilon.getAgentCount();
+const agentIndex = upsilon.getAgentIndex();
+const matchData = upsilon.joinWaitMatch("1v1_PVP");
+
+if (agentIndex === 0) {
+    upsilon.setShared("global_match_id", matchData.match_id);
+}
+
+// ALL agents must call the barrier
+upsilon.syncGroup("match_ready", agentCount);
+
+// Now everyone can safely read the shared value
+const sharedId = upsilon.getShared("global_match_id");
+upsilon.assert(sharedId === matchData.match_id, "Joined different matches!");
+```
+
+---
+
+### **5. Running Your Scripts**
 
 Once your scripts are written, you execute them using the CLI coordinator. 
 

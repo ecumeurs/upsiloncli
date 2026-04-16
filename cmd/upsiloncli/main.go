@@ -29,12 +29,12 @@ func main() {
 	_ = godotenv.Load()
 
 	rev := getGitRevision()
-	ts := time.Now().UTC().Format(time.RFC3339)
+	ts := time.Now().UTC().Format("2006-01-02T15:04:05.000Z07:00")
 	fmt.Printf("[{%s}] [INFO] UpsilonCLI starting (rev: %s)\n", ts, rev)
 
 	appKey := os.Getenv("REVERB_APP_KEY")
 	if appKey == "" {
-		ts := time.Now().UTC().Format(time.RFC3339)
+		ts := time.Now().UTC().Format("2006-01-02T15:04:05.000Z07:00")
 		fmt.Printf("[{%s}] \033[31m\033[1m[ERROR]\033[0m Mandatory environment variable REVERB_APP_KEY is missing.\n", ts)
 		fmt.Println("Please set it in your system environment or a .env file.")
 		os.Exit(1)
@@ -57,14 +57,14 @@ func main() {
 	flag.Parse()
 
 	if *auto {
-		ts := time.Now().UTC().Format(time.RFC3339)
+		ts := time.Now().UTC().Format("2006-01-02T15:04:05.000Z07:00")
 		fmt.Printf("[{%s}] Autopilot mode — not yet implemented.\n", ts)
 		os.Exit(0)
 	}
 
 	if *farm {
 		if flag.NArg() == 0 {
-			ts := time.Now().UTC().Format(time.RFC3339)
+			ts := time.Now().UTC().Format("2006-01-02T15:04:05.000Z07:00")
 			fmt.Printf("[{%s}] Error: --farm requires at least one script path.\n", ts)
 			os.Exit(1)
 		}

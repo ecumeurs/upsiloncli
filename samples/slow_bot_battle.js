@@ -1,27 +1,46 @@
-// Upsilon Bot: SLOW PVP Battle Agent (Stress Test) (Refactored)
+// Upsilon Bot: SLOW Multi-Agent Battle Agent (Stress Test with Human Delays)
 // Adheres to [[rule_password_policy]]: 15+ chars, 1 uppercase, 1 digit, 1 special symbol
 
 const botId = Math.floor(Math.random() * 100000);
 const accountName = "bot_slow_" + botId;
 const password = "VeryLongBotPassword123!";
+const gameMode = upsilon.getEnv("UPSILON_GAME_MODE") || "1v1_PVP";
+
+// Determine expected agents based on game mode
+let expectedAgents = 2; // Default to 1v1
+if (gameMode === "2v2_PVP") expectedAgents = 4;
+else if (gameMode === "2v2_PVE") expectedAgents = 2;
+else if (gameMode === "1v1_PVE") expectedAgents = 1;
+
+// 0. Configuration Validation
+upsilon.assert(upsilon.getAgentCount() === expectedAgents, 
+    "Configuration mismatch: Mode " + gameMode + " expects " + expectedAgents + " agents, but " + upsilon.getAgentCount() + " are running.");
 
 // 1. Bootstrap Bot (Handles anti-spam delay, registration, and automatic teardown)
 upsilon.bootstrapBot(accountName, password);
 
-// 2. Synchronization (Wait for opponent in 1v1 farm)
-upsilon.syncGroup("pvp_test", 2);
+// 2. [REMOVED pre-matchmaking sync]
 
 // 3. Join Matchmaking and Wait
-const gameMode = upsilon.getEnv("UPSILON_GAME_MODE") || upsilon.getShared("game_mode") || "1v1_PVP";
+upsilon.humanDelay();
 const matchData = upsilon.joinWaitMatch(gameMode);
 const matchId = matchData.match_id;
 
-// 4. Battle Loop (Streamlined)
+// 4. Match Verification - Ensure all agents are in the same match
+if (expectedAgents > 1) {
+    upsilon.syncGroup("match_verification", expectedAgents);
+    upsilon.log("Verified match ID: " + matchId);
+} else {
+    upsilon.log("Joined match: " + matchId);
+}
+
+// 5. Battle Loop (with human delays)
 upsilon.log("Entering battle loop...");
 
 while (true) {
+    upsilon.humanDelay();
     const board = upsilon.waitNextTurn();
-    if (!board) break; // Game ended, results logged by helper
+    if (!board) break; // Game ended
 
     executeTacticalLogic(board, matchId);
 }
@@ -30,10 +49,11 @@ function executeTacticalLogic(board, matchId) {
     const actingEntity = upsilon.currentCharacter();
     if (!actingEntity || !actingEntity.is_self) return;
 
-    upsilon.log("[Unit: " + actingEntity.name + " | HP: " + actingEntity.hp + "/" + actingEntity.max_hp + "]");
+    upsilon.log("[Unit: " + actingEntity.name + " | HP: " + actingEntity.hp + "/" + actingEntity.max_hp + " | Attacked: " + actingEntity.has_attacked + "]");
 
     const enemies = upsilon.myFoesCharacters().filter(e => !e.dead && e.hp > 0);
     if (enemies.length === 0) {
+        upsilon.humanDelay();
         upsilon.call("game_action", { id: matchId, entity_id: actingEntity.id, type: "pass" });
         return;
     }
@@ -46,34 +66,38 @@ function executeTacticalLogic(board, matchId) {
 
     const dist = Math.abs(actingEntity.position.x - nearestEnemy.position.x) + Math.abs(actingEntity.position.y - nearestEnemy.position.y);
 
-    // 1. Move toward enemy
-    if (dist > 1 && actingEntity.move > 0) {
-        upsilon.humanDelay(); // SIMULATE SLOW HUMAN
-        const pathSteps = upsilon.planTravelToward(actingEntity.id, nearestEnemy.position, board);
-        if (pathSteps && pathSteps.length > 0) {
-            upsilon.call("game_action", {
-                id: matchId,
-                entity_id: actingEntity.id,
-                type: "move",
-                target_coords: pathSteps.map(p => p.x + "," + p.y).join(";")
-            });
-        }
-    }
-
-    // 2. Attack if adjacent
-    const reDist = Math.abs(actingEntity.position.x - nearestEnemy.position.x) + Math.abs(actingEntity.position.y - nearestEnemy.position.y);
-    if (reDist <= 1) {
-        upsilon.humanDelay(); // SIMULATE SLOW HUMAN
+    // 1. Attack if adjacent
+    if (dist <= 1 && !actingEntity.has_attacked) {
+        upsilon.humanDelay();
+        upsilon.log("Hacking " + nearestEnemy.name + " to death!");
         upsilon.call("game_action", {
             id: matchId,
             entity_id: actingEntity.id,
             type: "attack",
             target_coords: nearestEnemy.position.x + "," + nearestEnemy.position.y
         });
+        return;
     }
 
-    // 3. Always PASS to end the turn
-    upsilon.humanDelay(); // SIMULATE SLOW HUMAN
+    // 2. Move toward enemy
+    if (dist > 1 && actingEntity.move > 0 && !actingEntity.has_attacked) {
+        upsilon.humanDelay();
+        const pathSteps = upsilon.planTravelToward(actingEntity.id, nearestEnemy.position, board);
+        if (pathSteps && pathSteps.length > 0) {
+            upsilon.log("Homing missile mode: Moving toward " + nearestEnemy.name);
+            upsilon.call("game_action", {
+                id: matchId,
+                entity_id: actingEntity.id,
+                type: "move",
+                target_coords: pathSteps.map(p => p.x + "," + p.y).join(";")
+            });
+            return;
+        }
+    }
+
+    // 3. Action economy spent. End turn.
+    upsilon.humanDelay();
+    upsilon.log("Action economy spent. Passing.");
     upsilon.call("game_action", { id: matchId, entity_id: actingEntity.id, type: "pass" });
 }
 

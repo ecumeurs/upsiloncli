@@ -3,6 +3,7 @@ import sys
 import json
 import re
 import argparse
+from datetime import datetime
 
 def clean_line(line):
     # Remove prefix like [{2026-04-14T06:16:18Z}] [Bot-01] 
@@ -122,6 +123,14 @@ def print_bot_summary(bot_id, data, tactical=False):
     if tactical:
         print("\nRecent Tactical Actions:")
         for msg, line in data['tactical'][-15:]:
+            if "Acting with" in msg:
+                m = re.search(r'([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})', msg)
+                if m:
+                    eid = m.group(1)
+                    if eid in data['entities']:
+                        e = data['entities'][eid]
+                        name = f"{e.get('name', eid)} ({e.get('nickname', 'AI')})"
+                        msg = msg.replace(eid, name)
             print(f"  [L{line:05d}] {msg}")
         
         if data['last_living_board']:
@@ -145,13 +154,13 @@ def parse_log(filepath, tactical=False):
     # Regex patterns
     bot_pattern = re.compile(r'\[(Bot-\d+)\]')
     reply_pattern = re.compile(r'\[REPLY (\d+)\]')
-    ws_pattern = re.compile(r'\[WS\].*board\.updated event received\.')
+    ws_pattern = re.compile(r'\[WS\].*(board\.updated|game\.ended) event received\.')
     cli_error_pattern = re.compile(r'(Event loop interrupted|Execution failed|timeout waiting for event):? (.*)')
     delete_marker = re.compile(r'Deleting temporary account')
     
     # Tactical Patterns for upsilon.log (Simplified one-liners)
     tactical_patterns = [
-        (re.compile(r'--- (My Turn! Acting with entity: .*) ---'), r'\1'),
+        (re.compile(r'--- (My Turn! Acting with .*) ---'), r'\1'),
         (re.compile(r'Moving \d+ cells along path: (.*)'), r'Moving: \1'),
         (re.compile(r'Target in range! Attacking!'), r'Action: Attack'),
         (re.compile(r'Targeting nearest enemy: (\w+)'), r'Target: \1'),
@@ -173,6 +182,7 @@ def parse_log(filepath, tactical=False):
 
     with open(filepath, 'r') as f:
         line_no = 0
+        last_timestamp = None
         json_buffer = []
         in_json = False
         bracket_count = 0
@@ -183,6 +193,19 @@ def parse_log(filepath, tactical=False):
         
         for line in f:
             line_no += 1
+            
+            ts_match = re.match(r'^\[\{([^}]+)\}\]', line)
+            if ts_match:
+                try:
+                    ts = datetime.fromisoformat(ts_match.group(1).replace('Z', '+00:00'))
+                    if last_timestamp:
+                        delta = (ts - last_timestamp).total_seconds()
+                        if delta >= 1.0:
+                            print(f"  ⏱️  [DELAY] Gap of {delta:.2f}s detected before L{line_no}")
+                            sys.stdout.flush()
+                    last_timestamp = ts
+                except Exception:
+                    pass
             
             # Identify bot context from prefix
             bot_match = bot_pattern.search(line)
@@ -379,9 +402,12 @@ def process_game_state(bot_data, gs, line_no, tactical):
             target_id = action.get('target_id')
             damage = action.get('damage', 0)
             target_name = "Unknown"
+            target_hp_info = ""
             if target_id in new_entity_ids:
-                target_name = f"{new_entity_ids[target_id]['name']}"
-            bot_data['tactical'].append((f"Action: {actor_name} ATTACKED {target_name} for {damage} damage!", line_no))
+                target_ent = new_entity_ids[target_id]
+                target_name = f"{target_ent['name']} ({target_ent.get('nickname', 'AI')})"
+                target_hp_info = f" ({target_ent.get('hp', 0)} HP left)"
+            bot_data['tactical'].append((f"Action: {actor_name} ATTACKED {target_name} for {damage} damage!{target_hp_info}", line_no))
         elif action_type == "MOVE":
             path_len = len(action.get('path', []))
             bot_data['tactical'].append((f"Action: {actor_name} MOVED {path_len} cells.", line_no))
@@ -462,7 +488,7 @@ def parse_log_stream(stream, args):
     bot_pattern = re.compile(r'\[(Bot-\d+)\]')
     
     tactical_patterns = [
-        (re.compile(r'--- (My Turn.*Acting with entity: .*) ---'), r'\1'),
+        (re.compile(r'--- (My Turn.*Acting with .*) ---'), r'\1'),
         (re.compile(r'Moving \d+ cells along path: (.*)'), r'Moving: \1'),
         (re.compile(r'Targeting nearest enemy: (\w+)'), r'Target: \1'),
         (re.compile(r'\[FEEDBACK\] (.*)'), r'Action: \1'),
@@ -486,8 +512,22 @@ def parse_log_stream(stream, args):
 
     try:
         ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
+        last_timestamp = None
         
         for line in stream:
+            ts_match = re.match(r'^\[\{([^}]+)\}\]', line)
+            if ts_match:
+                try:
+                    ts = datetime.fromisoformat(ts_match.group(1).replace('Z', '+00:00'))
+                    if last_timestamp:
+                        delta = (ts - last_timestamp).total_seconds()
+                        if delta >= 1.0:
+                            print(f"⏱️ [DELAY] Gap of {delta:.2f}s detected!")
+                            sys.stdout.flush()
+                    last_timestamp = ts
+                except Exception:
+                    pass
+                    
             bot_match = bot_pattern.search(line)
             
             if bot_match:
@@ -572,13 +612,13 @@ def parse_log_stream(stream, args):
                 if match:
                     msg = match.expand(fmt)
                     # Resolve active entity name
-                    if "Acting with entity:" in msg:
-                        parts = msg.split(":")
-                        if len(parts) > 1:
-                            # Strip ID and trailing ---
-                            eid = parts[-1].replace("---", "").strip()
-                            name = state.entities.get(eid, {}).get('name', eid)
-                            msg = f"--- My Turn! Acting with entity: {name} ---"
+                    if "Acting with" in msg:
+                        m = re.search(r'([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})', msg)
+                        if m:
+                            eid = m.group(1)
+                            if eid in state.entities:
+                                name = f"{state.entities[eid].get('name', eid)} ({state.owner_map.get(eid, 'AI')})"
+                                msg = msg.replace(eid, name)
                     
                     print(f"[{bot_id}] {msg}")
                     sys.stdout.flush()
