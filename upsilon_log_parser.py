@@ -469,12 +469,14 @@ def parse_log_stream(stream, args):
         (re.compile(r'Starting turn shot clock'), r'CLOCK: Started'),
         (re.compile(r'Turn timeout detected!'), r'CLOCK: TIMEOUT'),
         (re.compile(r'\[ERROR\] (.*)'), r'ERROR: \1'),
-        (re.compile(r'\[REPLY ([45]\d+)\] (.*)'), r'ERROR (\1): \2'),
+        (re.compile(r'JS Exception: (.*)'), r'JS ERROR: \1'),
     ]
     
     bots = {} # bot_id -> BotState
     json_buffers = {} # bot_id -> list of lines
     is_collecting_json = {} # bot_id -> bool
+    status_codes = {} # bot_id -> int
+    bracket_counts = {} # bot_id -> int
     last_bot_id = None
     
     def get_state(bid):
@@ -505,43 +507,59 @@ def parse_log_stream(stream, args):
             if "[WS]" in line or "[REPLY]" in line:
                 is_collecting_json[bot_id] = True
                 json_buffers[bot_id] = []
+                bracket_counts[bot_id] = 0
+                
+                reply_match = re.search(r'\[REPLY (\d+)\]', line)
+                if reply_match:
+                    status_codes[bot_id] = int(reply_match.group(1))
+                else:
+                    status_codes[bot_id] = 200 # Reset for WS
                 continue
             
             if is_collecting_json.get(bot_id):
                 # Strip ANSI from JSON lines before adding to buffer
-                raw_json_line = ansi_escape.sub('', line)
-                # JSON lines start with indentation in the CLI output
-                if raw_json_line.startswith("  ") or raw_json_line.strip() in ("{", "}", "{,"):
-                    json_buffers[bot_id].append(raw_json_line.strip())
-                    if raw_json_line.strip() == "}":
-                        try:
-                            full_json = "".join(json_buffers[bot_id])
-                            raw_data = json.loads(full_json)
-                            # SUCCESS! Process it
-                            data = raw_data.get('data', raw_data)
-                            
-                            # Handle Pusher/Reverb double-encoding
-                            if isinstance(data, str):
-                                try:
-                                    data = json.loads(data)
-                                except:
-                                    pass
+                raw_json_line = ansi_escape.sub('', line).strip()
+                if not raw_json_line: continue
 
-                            board = data
-                            if isinstance(data, dict):
-                                if 'game_state' in data:
-                                    board = data['game_state']
-                                elif 'match_id' in data and 'players' in data:
-                                    board = data
-                            
-                            if isinstance(board, dict) and 'players' in board:
-                                state.update_from_board(board)
-                                if state.game_finished:
-                                    print(state.get_summary())
-                            
-                            is_collecting_json[bot_id] = False
-                        except:
-                            pass # Keep collecting
+                json_buffers[bot_id].append(raw_json_line)
+                bracket_counts[bot_id] += raw_json_line.count('{')
+                bracket_counts[bot_id] -= raw_json_line.count('}')
+                
+                if bracket_counts[bot_id] == 0 and '{' in "".join(json_buffers[bot_id]):
+                    try:
+                        full_json = "".join(json_buffers[bot_id])
+                        raw_data = json.loads(full_json)
+                        # SUCCESS! Process it
+                        data = raw_data.get('data', raw_data)
+                        
+                        # Handle Pusher/Reverb double-encoding
+                        if isinstance(data, str):
+                            try:
+                                data = json.loads(data)
+                            except:
+                                pass
+
+                        board = data
+                        if isinstance(data, dict):
+                            if 'game_state' in data:
+                                board = data['game_state']
+                            elif 'match_id' in data and 'players' in data:
+                                board = data
+                        
+                        if isinstance(board, dict) and 'players' in board:
+                            state.update_from_board(board)
+                            if state.game_finished:
+                                print(state.get_summary())
+                        
+                        # ERROR REPORTING
+                        if status_codes.get(bot_id, 0) >= 400:
+                            msg = raw_data.get('message', 'Unknown Error')
+                            print(f"[{bot_id}] ERROR ({status_codes[bot_id]}): {msg}")
+                            sys.stdout.flush()
+
+                        is_collecting_json[bot_id] = False
+                    except:
+                        pass # Keep collecting
                 else:
                     # Line doesn't look like JSON and we were collecting? 
                     # If it's not a Bot-prefixed line, it might be the end of the block

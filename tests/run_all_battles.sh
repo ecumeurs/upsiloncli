@@ -35,8 +35,10 @@ run_test() {
     # Set environment variable for the bot script
     export UPSILON_GAME_MODE="$mode"
     
+    # Cleanup state before every run to ensure isolation
+    cd .. && ./zombie_killer.sh && ./clear_matches.sh && cd upsiloncli
+    
     # Run the farm and capture output
-    # We use a timeout to prevent hanging tests if the engine stalls
     echo "Running arena..."
     timeout 300 $CLI --farm $paths > "$log_file" 2>&1 || true
     

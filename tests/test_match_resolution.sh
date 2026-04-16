@@ -38,6 +38,9 @@ run_test() {
     
     export UPSILON_GAME_MODE="$mode"
     
+    # Cleanup state before every run to ensure isolation
+    cd .. && ./zombie_killer.sh && ./clear_matches.sh && cd upsiloncli
+    
     echo "Running arena..."
     timeout 300 $CLI --farm $paths > "$log_file" 2>&1 || true
     

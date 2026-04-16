@@ -36,6 +36,7 @@ const (
 type Printer struct {
 	Output io.Writer
 	Prefix string
+	Quiet  bool
 }
 
 // NewPrinter creates a new terminal printer writing to stdout.
@@ -54,6 +55,12 @@ func (p *Printer) WithPrefix(prefix string) *Printer {
 	return p
 }
 
+// WithQuiet returns a new printer with the given quiet mode.
+func (p *Printer) WithQuiet(quiet bool) *Printer {
+	p.Quiet = quiet
+	return p
+}
+
 // @spec-link [[rule_tracing_logging]]
 // timestamp returns a UTC timestamp in the format required by project standards.
 func (p *Printer) timestamp() string {
@@ -62,6 +69,10 @@ func (p *Printer) timestamp() string {
 
 // Curl prints the equivalent curl command for an API request.
 func (p *Printer) Curl(method, url string, headers http.Header, body []byte) {
+	if p.Quiet {
+		// Just store for later comparison in Response, or print a tiny breadcrumb
+		return
+	}
 	fmt.Fprintln(p.Output)
 	fmt.Fprintf(p.Output, "%s%s%s[CURL]%s ", p.timestamp(), p.Prefix, Cyan+Bold, Reset)
 
@@ -109,6 +120,12 @@ func (p *Printer) Response(statusCode int, body []byte) {
 		color = Red
 	} else if statusCode >= 300 {
 		color = Yellow
+	}
+
+	if p.Quiet && statusCode < 400 {
+		// Condensed output for successful requests in quiet mode
+		fmt.Fprintf(p.Output, "%s%s%s[OK]%s %s %d\n", p.timestamp(), p.Prefix, color+Bold, Reset, Green+"Request successful"+Reset, statusCode)
+		return
 	}
 
 	fmt.Fprintf(p.Output, "%s%s%s[REPLY %d]%s ", p.timestamp(), p.Prefix, color+Bold, statusCode, Reset)
