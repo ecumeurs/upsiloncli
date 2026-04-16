@@ -14,7 +14,7 @@ import (
 	"github.com/ecumeurs/upsiloncli/internal/endpoint"
 )
 
-func RunFarm(baseURL string, reg *endpoint.Registry, scriptPaths []string, logDir string, timeoutSecs int) {
+func RunFarm(baseURL string, reg *endpoint.Registry, scriptPaths []string, logDir string, timeoutSecs int, quiet bool) {
 	var wg sync.WaitGroup
 	sharedStore := NewSharedStore()
 
@@ -64,23 +64,37 @@ func RunFarm(baseURL string, reg *endpoint.Registry, scriptPaths []string, logDi
 			
 			var logger *os.File
 			if logDir != "" {
-				fileName := fmt.Sprintf("%s.log", agentID)
-				f, err := os.Create(filepath.Join(logDir, fileName))
-				if err != nil {
+				// Ensure log directory exists (absolute path for reliability)
+				absLogDir, _ := filepath.Abs(logDir)
+				if err := os.MkdirAll(absLogDir, 0755); err != nil {
 					ts := time.Now().UTC().Format(time.RFC3339)
-					fmt.Printf("[{%s}] [Farm] Error creating log file for %s: %v\n", ts, agentID, err)
+					fmt.Printf("[{%s}] [Farm] Error creating log directory %s: %v\n", ts, absLogDir, err)
 					logger = os.Stdout
 				} else {
-					logger = f
-					defer f.Close()
+					fileName := fmt.Sprintf("%s.log", agentID)
+					logPath := filepath.Join(absLogDir, fileName)
+					f, err := os.Create(logPath)
+					if err != nil {
+						ts := time.Now().UTC().Format(time.RFC3339)
+						fmt.Printf("[{%s}] [Farm] Error creating log file at %s: %v\n", ts, logPath, err)
+						logger = os.Stdout
+					} else {
+						logger = f
+						defer f.Close()
+						if !quiet {
+							ts := time.Now().UTC().Format(time.RFC3339)
+							fmt.Printf("[{%s}] [%s] Logging to %s\n", ts, agentID, logPath)
+						}
+					}
 				}
 			} else {
 				logger = os.Stdout
 			}
 
-			agent := NewAgent(agentID, baseURL, reg, logger, sharedStore)
+			agent := NewAgent(agentID, agentIdx, len(scriptPaths), baseURL, reg, logger, sharedStore, quiet)
 			agent.Ctx = ctx // Inject context
 			agent.Session.Set("agent_index", fmt.Sprintf("%d", agentIdx))
+			agent.Session.Set("agent_count", fmt.Sprintf("%d", len(scriptPaths)))
 			
 			agentsMu.Lock()
 			agents = append(agents, agent)

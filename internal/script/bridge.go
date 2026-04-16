@@ -35,7 +35,9 @@ func (a *Agent) bindJSAPI() {
 		"planTravelToward": a.jsPlanTravelToward,
 
 		// Environment
-		"getEnv": a.jsGetEnv,
+		"getEnv":            a.jsGetEnv,
+		"getAgentIndex":     a.jsGetAgentIndex,
+		"getAgentCount":     a.jsGetAgentCount,
 		
 		// Tactical Helpers
 		"myPlayer":            a.jsMyPlayer,
@@ -55,6 +57,8 @@ func (a *Agent) bindJSAPI() {
 		"registrationDelay": a.jsRegistrationDelay,
 		"waitNextTurn":      a.jsWaitNextTurn,
 		"syncGroup":         a.jsSyncGroup,
+		"joinQueue":         a.jsJoinQueue,
+		"waitForMatch":      a.jsWaitForMatch,
 	}
 	a.VM.Set("upsilon", upsilonObj)
 }
@@ -78,6 +82,15 @@ func (a *Agent) jsCall(routeName string, params map[string]interface{}) (interfa
 	resp, err := ep.ExecuteRaw(a.Client, a.Session, inputs)
 	if err != nil {
 		return nil, err
+	}
+
+	// PROACTIVE TURN MEMORY: If an attack was successful, mark it immediately
+	if routeName == "game_action" {
+		actionType, _ := params["type"].(string)
+		actorID, _ := params["entity_id"].(string)
+		if actionType == "attack" && actorID == a.currentTurnEntityID {
+			a.hasAttackedThisTurn = true
+		}
 	}
 
 	// Capture session state (tokens, IDs) from response
@@ -200,6 +213,11 @@ func (a *Agent) jsPlanTravelToward(call goja.FunctionCall) goja.Value {
 	// Inject flattened entities
 	board.Entities = a.flattenEntities(&board)
 
+	// Enforcement: if the unit has already attacked this turn, movement is blocked
+	if a.hasAttackedThisTurn && entityID == a.currentTurnEntityID {
+		return a.VM.ToValue([]dto.Position{})
+	}
+
 	path := PlanTravelToward(&board, entityID, target)
 	
 	// Ensure proper JSON mapping for the return value
@@ -212,6 +230,14 @@ func (a *Agent) jsPlanTravelToward(call goja.FunctionCall) goja.Value {
 
 func (a *Agent) jsGetEnv(key string) string {
 	return os.Getenv(key)
+}
+
+func (a *Agent) jsGetAgentIndex() int {
+	return a.AgentIndex
+}
+
+func (a *Agent) jsGetAgentCount() int {
+	return a.AgentCount
 }
 
 // --- Tactical Utility Implementations ---
@@ -252,11 +278,27 @@ func (a *Agent) jsCurrentCharacter() interface{} {
 	for _, p := range board.Players {
 		for _, e := range p.Entities {
 			if e.ID == board.CurrentEntityID {
-				return e
+				return a.decorateEntity(e, board)
 			}
 		}
 	}
 	return nil
+}
+
+func (a *Agent) decorateEntity(e dto.Entity, board *dto.BoardState) interface{} {
+	// Convert to map to add dynamic fields
+	data, _ := json.Marshal(e)
+	var res map[string]interface{}
+	json.Unmarshal(data, &res)
+
+	// Inject internal turn memory
+	if e.ID == a.currentTurnEntityID {
+		res["has_attacked"] = a.hasAttackedThisTurn
+	} else {
+		res["has_attacked"] = false
+	}
+
+	return res
 }
 
 func (a *Agent) jsMyCharacters() []dto.Entity {
@@ -343,11 +385,11 @@ func (a *Agent) jsCellContentAt(x, y int) interface{} {
 	board := a.Session.LastBoard()
 	if board == nil { return nil }
 	
-	if y < 0 || y >= len(board.Grid.Cells) || x < 0 || x >= len(board.Grid.Cells[0]) {
+	if x < 0 || x >= len(board.Grid.Cells) || y < 0 || y >= len(board.Grid.Cells[0]) {
 		return nil
 	}
 	
-	cell := board.Grid.Cells[y][x]
+	cell := board.Grid.Cells[x][y]
 	var foundEntity *dto.Entity
 	if cell.EntityID != "" {
 		for _, p := range board.Players {
@@ -400,7 +442,7 @@ func (a *Agent) jsBootstrapBot(call goja.FunctionCall) goja.Value {
 		matchID := a.jsGetContext("match_id")
 		if matchID != "" {
 			a.jsLog("Forfeiting match " + matchID)
-			a.jsCall("game_action", map[string]interface{}{"id": matchID, "type": "forfeit"})
+			a.jsCall("game_forfeit", map[string]interface{}{"id": matchID})
 		}
 
 		// Delete account
@@ -441,6 +483,21 @@ func (a *Agent) jsBootstrapBot(call goja.FunctionCall) goja.Value {
 }
 
 func (a *Agent) jsJoinWaitMatch(gameMode string) interface{} {
+	// 1. Ensure private user channel is subscribed before joining matchmaking
+	// This prevents the match.found event from being sent to a channel we aren't subbed to yet.
+	key := a.Session.WSChannelKey()
+	if key != "" {
+		channel := fmt.Sprintf("private-user.%s", key)
+		a.jsLog(fmt.Sprintf("Ensuring subscription to %s...", channel))
+		start := time.Now()
+		for !a.Listener.IsSubscribed(channel) {
+			if time.Since(start) > 30*time.Second {
+				panic(a.VM.ToValue("Timed out waiting for private channel subscription"))
+			}
+			a.jsSleep(100)
+		}
+	}
+
 	a.jsLog("Joining queue: " + gameMode)
 	_, err := a.jsCall("matchmaking_join", map[string]interface{}{"game_mode": gameMode})
 	if err != nil {
@@ -470,50 +527,89 @@ func (a *Agent) jsJoinWaitMatch(gameMode string) interface{} {
 }
 
 func (a *Agent) jsWaitNextTurn() interface{} {
+	// 1. Check if it is already our turn based on the current session state
+	// This prevents deadlocks if the match just started and it is already our turn.
+	if board := a.Listener.Session.LastBoard(); board != nil {
+		if board.CurrentPlayerIsSelf && board.Version > a.lastConsumedVersion {
+			// Sync turn memory if resuming
+			if a.currentTurnEntityID != board.CurrentEntityID {
+				a.currentTurnEntityID = board.CurrentEntityID
+				a.hasAttackedThisTurn = false
+			}
+			if board.Action != nil && board.Action.Type == "attack" && board.Action.ActorID == a.currentTurnEntityID {
+				a.hasAttackedThisTurn = true
+			}
+
+			a.jsLog(fmt.Sprintf("--- Resume Turn! Already acting with entity: %v (v%d) ---", board.CurrentEntityID, board.Version))
+			a.lastConsumedVersion = board.Version
+			return a.VM.ToValue(board)
+		}
+	}
+
 	for {
-		eventData, err := a.jsWaitForEvent("board.updated", 60000)
+		// Wait for either tactical progression or game termination
+		eventData, eventName, err := a.Listener.WaitForAnyData(a.Ctx, []string{"board.updated", "game.ended"}, 60000)
 		if err != nil {
 			panic(a.VM.ToValue("Turn wait timed out or failed: " + err.Error()))
 		}
 
-		env, ok := eventData.(map[string]interface{})
-		if !ok { continue }
-		board, ok := env["data"].(map[string]interface{})
-		if !ok { continue }
-
-		if finished, _ := board["game_finished"].(bool); finished {
-			winner, _ := board["winner_is_self"].(bool)
-			if winner {
-				a.jsLog("VICTORY IS MINE!")
-			} else {
-				a.jsLog("Defeated... perishing with honor.")
-			}
+		if eventName == "game.ended" {
+			a.jsLog("Match termination event received. Exiting battle loop.")
 			a.jsSetContext("match_id", "") // Clear to prevent teardown forfeit
 			return nil
 		}
 
-		if active, _ := board["current_player_is_self"].(bool); active {
-			a.jsLog(fmt.Sprintf("--- My Turn! Acting with entity: %v ---", board["current_entity_id"]))
-			return board
+		env, ok := eventData.(map[string]interface{})
+		if !ok { continue }
+		boardMap, ok := env["data"].(map[string]interface{})
+		if !ok { continue }
+
+		// Manual check for finished flag inside board.updated
+		if finished, _ := boardMap["game_finished"].(bool); finished {
+			a.jsLog("Match finished flag detected in update. Exiting battle loop.")
+			a.jsSetContext("match_id", "") // Clear to prevent teardown forfeit
+			return nil
 		}
+
+		// Double-check ownership via session data (hydrated by Listener)
+		board := a.Listener.Session.LastBoard()
+		if board != nil && board.CurrentPlayerIsSelf && board.Version > a.lastConsumedVersion {
+			// INTERNAL TURN MEMORY MANAGEMENT
+			if a.currentTurnEntityID != board.CurrentEntityID {
+				a.jsLog(fmt.Sprintf("Initiative shift: %s -> %s. Clearing turn memory.", a.currentTurnEntityID, board.CurrentEntityID))
+				a.currentTurnEntityID = board.CurrentEntityID
+				a.hasAttackedThisTurn = false
+			}
+
+			// Watch for attack actions to set the flag
+			if board.Action != nil && board.Action.Type == "attack" && board.Action.ActorID == a.currentTurnEntityID {
+				a.hasAttackedThisTurn = true
+			}
+
+			a.jsLog(fmt.Sprintf("--- My Turn! Acting with entity: %v (v%d) ---", board.CurrentEntityID, board.Version))
+			a.lastConsumedVersion = board.Version
+			return a.VM.ToValue(boardMap)
+		}
+		
+		a.jsLog("Received board update, but it's not my turn yet. Continuing wait...")
 	}
 }
 
 func (a *Agent) jsSyncGroup(key string, count int) {
 	readyKey := key + "_ready"
 	
-	// Increment our presence
-	val, _ := a.Shared.Get(readyKey)
-	current := 0
-	if val != nil {
-		if c, ok := val.(int); ok { current = c }
-	}
-	a.Shared.Set(readyKey, current+1)
+	// Atomic increment to avoid race condition in multi-agent farms
+	current := a.Shared.AtomicIncrement(readyKey, 1)
 
-	a.jsLog(fmt.Sprintf("Waiting for syncing group '%s' (%v/%v)...", key, current+1, count))
+	a.jsLog(fmt.Sprintf("Waiting for syncing group '%s' (%v/%v)...", key, current, count))
 
-	// Poll until everyone is ready
+	// Poll until everyone is ready with a 60s timeout
+	start := time.Now()
 	for {
+		if time.Since(start) > 60*time.Second {
+			panic(a.VM.ToValue(fmt.Sprintf("SyncGroup '%s' timed out after 60s", key)))
+		}
+
 		val, _ := a.Shared.Get(readyKey)
 		if val != nil {
 			if c, ok := val.(int); ok && c >= count {
@@ -523,5 +619,37 @@ func (a *Agent) jsSyncGroup(key string, count int) {
 		a.jsSleep(500)
 	}
 	a.jsLog(fmt.Sprintf("Group '%s' synchronized. Proceeding.", key))
+}
+
+func (a *Agent) jsJoinQueue(gameMode string) interface{} {
+	a.jsLog("Requesting matchmaking join: " + gameMode)
+	resp, err := a.jsCall("matchmaking_join", map[string]interface{}{"game_mode": gameMode})
+	if err != nil {
+		panic(a.VM.ToValue("Failed to join queue: " + err.Error()))
+	}
+	return resp
+}
+
+func (a *Agent) jsWaitForMatch() interface{} {
+	a.jsLog("Waiting for match.found...")
+	matchEnvelope, err := a.jsWaitForEvent("match.found", 60000)
+	if err != nil {
+		panic(a.VM.ToValue("Matchmaking timed out or failed: " + err.Error()))
+	}
+
+	// Safely extract match_id
+	env, ok := matchEnvelope.(map[string]interface{})
+	if !ok { panic(a.VM.ToValue("Invalid match envelope structure")) }
+	
+	data, ok := env["data"].(map[string]interface{})
+	if !ok { panic(a.VM.ToValue("Invalid match event data structure")) }
+
+	matchID, _ := data["match_id"].(string)
+	if matchID != "" {
+		a.jsSetContext("match_id", matchID)
+		a.jsLog("Match Found! ID: " + matchID)
+	}
+
+	return data
 }
 

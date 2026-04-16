@@ -49,6 +49,8 @@ func main() {
 	persist := flag.Bool("persist", false, "Load/save session to .upsilon_session.json")
 	flag.BoolVar(persist, "P", false, "Load/save session to .upsilon_session.json (shorthand)")
 	farm := flag.Bool("farm", false, "Execute multiple bot scripts in parallel")
+	quiet := flag.Bool("quiet", false, "Condense successful API logs")
+	flag.BoolVar(quiet, "q", false, "Condense successful API logs (shorthand)")
 	timeout := flag.Int("timeout", 0, "Global execution timeout in seconds")
 	logDir := flag.String("logs", "", "Directory to store individual agent log files")
 	flag.StringVar(logDir, "L", "", "Directory to store individual agent log files (shorthand)")
@@ -69,11 +71,11 @@ func main() {
 		// Register endpoints
 		reg := endpoint.NewRegistry()
 		endpoint.RegisterAll(reg)
-		script.RunFarm(*baseURL, reg, flag.Args(), *logDir, *timeout)
+		script.RunFarm(*baseURL, reg, flag.Args(), *logDir, *timeout, *quiet)
 		return
 	}
 
-	app := cli.New(*baseURL, *persist)
+	app := cli.New(*baseURL, *persist, *quiet)
 
 	// If there are remaining arguments, treat them as a single command line
 	if flag.NArg() > 0 {

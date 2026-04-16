@@ -34,6 +34,8 @@ type Listener struct {
 
 	waitMu  sync.Mutex
 	waiters map[string][]chan interface{}
+	buffer  map[string][]interface{}
+	subsAck map[string]bool
 }
 
 // NewListener creates a new WebSocket listener.
@@ -55,6 +57,8 @@ func NewListener(client *api.Client, sess *session.Session, printer *display.Pri
 		Host:    fmt.Sprintf("%s:%s", host, port),
 		subs:    make(map[string]bool),
 		waiters: make(map[string][]chan interface{}),
+		buffer:  make(map[string][]interface{}),
+		subsAck: make(map[string]bool),
 	}
 	return l
 }
@@ -158,8 +162,22 @@ func (l *Listener) listenLoop() {
 					l.Printer.WebSocket("MatchFound", envelope.Data)
 					l.Printer.System(fmt.Sprintf("Match detected! Initializing arena %s...", payload.MatchID))
 				}
-				l.initializeMatch(payload.MatchID)
-				l.subscribeToArenaChannel(payload.MatchID)
+				
+				// Perform tactical setup in background to avoid blocking the main WebSocket loop
+				// but keep a local copy of event data to notify waiters AFTER setup
+				eventCopy := envelope // shallow copy is fine as we only need Event and Data
+				go func(mID string, env struct {
+					Event   string          `json:"event"`
+					Channel string          `json:"channel"`
+					Data    json.RawMessage `json:"data"`
+				}) {
+					l.initializeMatch(mID)
+					l.subscribeToArenaChannel(mID)
+					// Now that the session is hydrated with participants, notify the bot
+					l.notifyWaiters(env.Event, env.Data)
+				}(payload.MatchID, eventCopy)
+				
+				continue // Skip the global notifyWaiters at the end for this specific event
 			} else {
 				if l.Printer != nil {
 					l.Printer.Warn(fmt.Sprintf("Received match.found but match_id is missing or malformed. Raw: %s", string(envelope.Data)))
@@ -209,6 +227,9 @@ func (l *Listener) listenLoop() {
 			}
 
 		case "pusher_internal:subscription_succeeded":
+			l.waitMu.Lock()
+			l.subsAck[envelope.Channel] = true
+			l.waitMu.Unlock()
 			if l.Printer != nil {
 				l.Printer.System(fmt.Sprintf("Subscription for %s acknowledged by server.", envelope.Channel))
 			}
@@ -231,32 +252,73 @@ func (l *Listener) listenLoop() {
 
 // WaitForData blocks until an event of the given name is received or context is cancelled.
 func (l *Listener) WaitForData(ctx context.Context, eventName string, timeoutMs int) (interface{}, error) {
-	ch := make(chan interface{}, 1)
+	data, _, err := l.WaitForAnyData(ctx, []string{eventName}, timeoutMs)
+	return data, err
+}
+
+// WaitForAnyData blocks until any of the given event names is received or context is cancelled.
+// It returns the data RECEIVED, the NAME of the event that triggered, and any error.
+func (l *Listener) WaitForAnyData(ctx context.Context, eventNames []string, timeoutMs int) (interface{}, string, error) {
+	ch := make(chan struct {
+		name string
+		data interface{}
+	}, 1)
 	
 	l.waitMu.Lock()
-	l.waiters[eventName] = append(l.waiters[eventName], ch)
+	// Check buffer first
+	for _, name := range eventNames {
+		if b, ok := l.buffer[name]; ok && len(b) > 0 {
+			data := b[0]
+			l.buffer[name] = b[1:]
+			l.waitMu.Unlock()
+			return data, name, nil
+		}
+	}
+
+	waiterChans := make(map[string]chan interface{})
+	for _, name := range eventNames {
+		w := make(chan interface{}, 1)
+		waiterChans[name] = w
+		l.waiters[name] = append(l.waiters[name], w)
+		
+		nameCaptured := name
+		go func(n string, w chan interface{}) {
+			select {
+			case d := <-w:
+				select {
+				case ch <- struct {
+					name string
+					data interface{}
+				}{n, d}:
+				default:
+				}
+			case <-ctx.Done():
+			}
+		}(nameCaptured, w)
+	}
 	l.waitMu.Unlock()
 
 	defer func() {
 		l.waitMu.Lock()
 		defer l.waitMu.Unlock()
-		// Remove ch from waiters
-		list := l.waiters[eventName]
-		for i, v := range list {
-			if v == ch {
-				l.waiters[eventName] = append(list[:i], list[i+1:]...)
-				break
+		for name, w := range waiterChans {
+			list := l.waiters[name]
+			for i, v := range list {
+				if v == w {
+					l.waiters[name] = append(list[:i], list[i+1:]...)
+					break
+				}
 			}
 		}
 	}()
 
 	select {
-	case data := <-ch:
-		return data, nil
+	case res := <-ch:
+		return res.data, res.name, nil
 	case <-ctx.Done():
-		return nil, ctx.Err()
+		return nil, "", ctx.Err()
 	case <-time.After(time.Duration(timeoutMs) * time.Millisecond):
-		return nil, fmt.Errorf("timeout waiting for event: %s", eventName)
+		return nil, "", fmt.Errorf("timeout waiting for events: %v", eventNames)
 	}
 }
 
@@ -293,11 +355,6 @@ func (l *Listener) notifyWaiters(eventName string, data json.RawMessage) {
 	l.waitMu.Lock()
 	defer l.waitMu.Unlock()
 
-	waiters, ok := l.waiters[eventName]
-	if !ok || len(waiters) == 0 {
-		return
-	}
-
 	// 1. Handle double-encoding (Pusher/Reverb sends data as a JSON string sometimes)
 	var intermediate json.RawMessage
 	var dataStr string
@@ -313,6 +370,16 @@ func (l *Listener) notifyWaiters(eventName string, data json.RawMessage) {
 		if l.Printer != nil {
 			l.Printer.Warn(fmt.Sprintf("Failed to parse event data for JS: %v", err))
 		}
+		return
+	}
+
+	waiters, ok := l.waiters[eventName]
+	if !ok || len(waiters) == 0 {
+		// No one is waiting, buffer it
+		if l.buffer == nil {
+			l.buffer = make(map[string][]interface{})
+		}
+		l.buffer[eventName] = append(l.buffer[eventName], parsed)
 		return
 	}
 
@@ -362,6 +429,13 @@ func (l *Listener) Status() (connected bool, socketID string, subscriptions []st
 		subscriptions = append(subscriptions, sub)
 	}
 	return
+}
+
+// IsSubscribed returns true if the given channel has been acknowledged by the server.
+func (l *Listener) IsSubscribed(channel string) bool {
+	l.waitMu.Lock()
+	defer l.waitMu.Unlock()
+	return l.subsAck[channel]
 }
 
 func (l *Listener) subscribeToUserChannel() {
@@ -429,7 +503,7 @@ func (l *Listener) getAuth(channel string) (string, error) {
 	req, _ := http.NewRequest("POST", url, body)
 	req.Header = headers
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := l.Client.HTTPClient.Do(req)
 	if err != nil {
 		return "", err
 	}

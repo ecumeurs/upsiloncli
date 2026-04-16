@@ -1,4 +1,4 @@
-// Upsilon Bot: PVE Battle Agent (Refactored)
+// Upsilon Bot: PVE Battle Agent (Refactored with Internal Turn Memory)
 // Adheres to [[rule_password_policy]]: 15+ chars, 1 uppercase, 1 digit, 1 special symbol
 
 const botId = Math.floor(Math.random() * 100000);
@@ -26,7 +26,7 @@ function executeTacticalLogic(board, matchId) {
     const actingEntity = upsilon.currentCharacter();
     if (!actingEntity || !actingEntity.is_self) return;
 
-    upsilon.log("[Unit: " + actingEntity.name + " | HP: " + actingEntity.hp + "/" + actingEntity.max_hp + "]");
+    upsilon.log("[Unit: " + actingEntity.name + " | HP: " + actingEntity.hp + "/" + actingEntity.max_hp + " | Attacked: " + actingEntity.has_attacked + "]");
 
     const enemies = upsilon.myFoesCharacters().filter(e => !e.dead && e.hp > 0);
     if (enemies.length === 0) {
@@ -42,31 +42,35 @@ function executeTacticalLogic(board, matchId) {
 
     const dist = Math.abs(actingEntity.position.x - nearestEnemy.position.x) + Math.abs(actingEntity.position.y - nearestEnemy.position.y);
 
-    // 1. Move toward enemy
-    if (dist > 1 && actingEntity.move > 0) {
-        const pathSteps = upsilon.planTravelToward(actingEntity.id, nearestEnemy.position, board);
-        if (pathSteps && pathSteps.length > 0) {
-            upsilon.call("game_action", {
-                id: matchId,
-                entity_id: actingEntity.id,
-                type: "move",
-                target_coords: pathSteps.map(p => p.x + "," + p.y).join(";")
-            });
-        }
-    }
-
-    // 2. Attack if adjacent
-    const reDist = Math.abs(actingEntity.position.x - nearestEnemy.position.x) + Math.abs(actingEntity.position.y - nearestEnemy.position.y);
-    if (reDist <= 1) {
+    // 1. Attack if adjacent AND we haven't attacked yet (enforced internally too)
+    if (dist <= 1 && !actingEntity.has_attacked) {
+        upsilon.log("Hacking " + nearestEnemy.name + " to death!");
         upsilon.call("game_action", {
             id: matchId,
             entity_id: actingEntity.id,
             type: "attack",
             target_coords: nearestEnemy.position.x + "," + nearestEnemy.position.y
         });
+        return; // Wait for board update to calculate damage
     }
 
-    // 3. Always PASS to end the turn
+    // 2. Move toward enemy if not adjacent AND we haven't attacked (movement blocked internally if attacked)
+    if (dist > 1 && actingEntity.move > 0 && !actingEntity.has_attacked) {
+        const pathSteps = upsilon.planTravelToward(actingEntity.id, nearestEnemy.position, board);
+        if (pathSteps && pathSteps.length > 0) {
+            upsilon.log("Homing missile mode: Moving toward " + nearestEnemy.name);
+            upsilon.call("game_action", {
+                id: matchId,
+                entity_id: actingEntity.id,
+                type: "move",
+                target_coords: pathSteps.map(p => p.x + "," + p.y).join(";")
+            });
+            return; // Wait for board update to get our new position
+        }
+    }
+
+    // 3. Action economy spent. End turn.
+    upsilon.log("Action economy spent. Passing to next unit.");
     upsilon.call("game_action", { id: matchId, entity_id: actingEntity.id, type: "pass" });
 }
 

@@ -78,6 +78,7 @@ type BoardState struct {
 	WinnerIsSelf        bool      `json:"winner_is_self"`
 	WinnerTeamID        *int            `json:"winner_team_id"`
 	Action              *ActionFeedback `json:"action,omitempty"`
+	Version             uint64          `json:"version"`
 	GameFinished        bool            `json:"game_finished"`
 }
 

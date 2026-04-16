@@ -27,7 +27,7 @@ type CLI struct {
 const sessionFile = ".upsilon_session.json"
 
 // New creates a new CLI instance.
-func New(baseURL string, persist bool) *CLI {
+func New(baseURL string, persist bool, quiet bool) *CLI {
 	sess := session.New()
 	if persist {
 		if err := sess.LoadFromFile(sessionFile); err != nil {
@@ -35,7 +35,7 @@ func New(baseURL string, persist bool) *CLI {
 		}
 	}
 
-	printer := display.NewPrinter()
+	printer := display.NewPrinter().WithQuiet(quiet)
 	client := api.NewClient(baseURL, sess, printer)
 	reg := endpoint.NewRegistry()
 	endpoint.RegisterAll(reg)
