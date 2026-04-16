@@ -2,10 +2,10 @@
 // @spec-link [[rule_progression]]
 
 const botId = Math.floor(Math.random() * 10000);
-const Role = upsilon.getContext("agent_index") === 0 ? "WINNER" : "LOSER";
+const Role = upsilon.getContext("agent_index") === "0" ? "WINNER" : "LOSER";
 const accountName = `prog_${Role.toLowerCase()}_${botId}`;
 const password = "VerySecurePassword123!";
-const sharedKey = `prog_test_${botId}`;
+const sharedKey = `progression_sync_key`;
 
 upsilon.log(`[${Role}] Starting progression check...`);
 
@@ -39,6 +39,23 @@ if (Role === "WINNER") {
         upsilon.sleep(500);
     }
     upsilon.assert(ready, "LOSER timed out waiting for WINNER!");
+}
+
+// 2.5 Pre-Win Upgrade Lock Validation
+if (Role === "WINNER") {
+    let profile = upsilon.call("profile_get", {});
+    let charId = profile.characters[0].id;
+
+    upsilon.log("[WINNER] Testing Pre-Win Upgrade Lock...");
+    try {
+        upsilon.call("character_upgrade", {
+            characterId: charId,
+            hp: "1"
+        });
+        upsilon.assert(false, "ERROR: Character allowed to upgrade before winning any matches!");
+    } catch (e) {
+        upsilon.log("SUCCESS: Pre-Win upgrade properly rejected -> " + e.message);
+    }
 }
 
 // 3. Matchmaking

@@ -38,17 +38,23 @@ type Listener struct {
 
 // NewListener creates a new WebSocket listener.
 func NewListener(client *api.Client, sess *session.Session, printer *display.Printer) *Listener {
+	host := os.Getenv("REVERB_HOST")
+	port := os.Getenv("REVERB_PORT")
+	if host == "" {
+		host = "127.0.0.1"
+	}
+	if port == "" {
+		port = "8080" // default
+	}
+
 	l := &Listener{
 		Client:  client,
 		Session: sess,
 		Printer: printer,
 		AppKey:  os.Getenv("REVERB_APP_KEY"),
-		Host:    os.Getenv("REVERB_HOST"),
+		Host:    fmt.Sprintf("%s:%s", host, port),
 		subs:    make(map[string]bool),
 		waiters: make(map[string][]chan interface{}),
-	}
-	if l.Host == "" {
-		l.Host = "127.0.0.1:8080"
 	}
 	return l
 }
