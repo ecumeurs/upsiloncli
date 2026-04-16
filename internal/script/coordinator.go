@@ -80,6 +80,7 @@ func RunFarm(baseURL string, reg *endpoint.Registry, scriptPaths []string, logDi
 
 			agent := NewAgent(agentID, baseURL, reg, logger, sharedStore)
 			agent.Ctx = ctx // Inject context
+			agent.Session.Set("agent_index", fmt.Sprintf("%d", agentIdx))
 			
 			agentsMu.Lock()
 			agents = append(agents, agent)

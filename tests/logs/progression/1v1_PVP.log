@@ -1,0 +1,167 @@
+[{2026-04-16T09:35:03Z}] [INFO] UpsilonCLI starting (rev: unknown)
+[{2026-04-16T09:35:03Z}] [Bot-02] [35m[1m[WSCAT][0m [2mconnect -c "ws://127.0.0.1/app/qtjp54myattne9euwedu?protocol=7&client=js&version=8.4.0-rc2&flash=false"[0m
+[{2026-04-16T09:35:03Z}] [Bot-01] [35m[1m[WSCAT][0m [2mconnect -c "ws://127.0.0.1/app/qtjp54myattne9euwedu?protocol=7&client=js&version=8.4.0-rc2&flash=false"[0m
+[{2026-04-16T09:35:03Z}] [Bot-01] [31m[1m[WARN][0m WebSocket connection failed (is Reverb running?): dial tcp 127.0.0.1:80: connect: connection refused
+[{2026-04-16T09:35:03Z}] [Bot-02] [31m[1m[WARN][0m WebSocket connection failed (is Reverb running?): dial tcp 127.0.0.1:80: connect: connection refused
+[{2026-04-16T09:35:03Z}] [Bot-02] [LOSER] Starting progression check...
+
+[{2026-04-16T09:35:03Z}] [Bot-02] [36m[1m[CURL][0m [2mcurl -X POST -H 'Content-Type: application/json' -H 'Accept: application/json' -d '{"account_name":"prog_loser_9134","birth_date":"1995-05-05","email":"prog_loser_9134@example.com","full_address":"Progression Test Street","password":"********","password_confirmation":"********"}' 'http://localhost:8000/api/v1/auth/register'[0m
+[{2026-04-16T09:35:03Z}] [Bot-01] [WINNER] Starting progression check...
+
+[{2026-04-16T09:35:03Z}] [Bot-01] [36m[1m[CURL][0m [2mcurl -X POST -H 'Content-Type: application/json' -H 'Accept: application/json' -d '{"account_name":"prog_winner_6703","birth_date":"1995-05-05","email":"prog_winner_6703@example.com","full_address":"Progression Test Street","password":"********","password_confirmation":"********"}' 'http://localhost:8000/api/v1/auth/register'[0m
+[{2026-04-16T09:35:03Z}] [Bot-01] [32m[1m[REPLY 201][0m 
+  [2m{
+    "request_id": "019d95a4-de93-72ba-a7e7-972484103a80",
+    "message": "Registration successful.",
+    "success": true,
+    "data": {
+      "user": {
+        "account_name": "prog_winner_6703",
+        "role": null,
+        "ws_channel_key": "5cb650e4-fb6f-4ced-b8e8-8d236675ed28",
+        "email": "prog_winner_6703@example.com",
+        "full_address": "Progression Test Street",
+        "birth_date": "1995-05-05",
+        "total_wins": null,
+        "total_losses": null,
+        "ratio": null,
+        "reroll_count": null
+      },
+      "token": "251|R3UIdWgOJhz0WNJqDsXKZlrVt91wSPzshyKA3kGue376f69a"
+    },
+    "meta": {}
+  }[0m
+[{2026-04-16T09:35:03Z}] [Bot-01] [WINNER] Shared signal set. Waiting for opponent...
+
+[{2026-04-16T09:35:03Z}] [Bot-01] [36m[1m[CURL][0m [2mcurl -X GET -H 'Content-Type: application/json' -H 'Accept: application/json' -H 'Authorization: Bearer 251|R3UIdWgOJhz0WNJqDsXKZlrVt91wSPzshyKA3kGue376f69a' 'http://localhost:8000/api/v1/profile'[0m
+[{2026-04-16T09:35:03Z}] [Bot-02] [32m[1m[REPLY 201][0m 
+  [2m{
+    "request_id": "019d95a4-df50-7319-b3a9-285758ce5b36",
+    "message": "Registration successful.",
+    "success": true,
+    "data": {
+      "user": {
+        "account_name": "prog_loser_9134",
+        "role": null,
+        "ws_channel_key": "26874efa-9b74-4608-9948-004db333f3ea",
+        "email": "prog_loser_9134@example.com",
+        "full_address": "Progression Test Street",
+        "birth_date": "1995-05-05",
+        "total_wins": null,
+        "total_losses": null,
+        "ratio": null,
+        "reroll_count": null
+      },
+      "token": "252|r5J9CCehKDfN9ps2rcGXyGmQFOw893I8ljl04PQ416f9fc86"
+    },
+    "meta": {}
+  }[0m
+[{2026-04-16T09:35:03Z}] [Bot-02] [LOSER] Waiting for WINNER signal...
+[{2026-04-16T09:35:03Z}] [Bot-01] [32m[1m[REPLY 200][0m 
+  [2m{
+    "request_id": "019d95a4-df64-7001-9c02-2ef8f6efca0d",
+    "message": "Profile retrieved.",
+    "success": true,
+    "data": {
+      "account_name": "prog_winner_6703",
+      "role": "Player",
+      "ws_channel_key": "5cb650e4-fb6f-4ced-b8e8-8d236675ed28",
+      "email": "prog_winner_6703@example.com",
+      "full_address": "Progression Test Street",
+      "birth_date": "1995-05-05",
+      "total_wins": 0,
+      "total_losses": 0,
+      "ratio": "0.00",
+      "reroll_count": 0,
+      "characters": [
+        {
+          "id": "019d95a4-de8d-7366-8638-1c67868c24f1",
+          "name": "Character 1",
+          "hp": 5,
+          "attack": 1,
+          "defense": 3,
+          "movement": 1,
+          "initial_movement": 1
+        },
+        {
+          "id": "019d95a4-de8f-718b-aa7c-5129d14a2d6b",
+          "name": "Character 2",
+          "hp": 4,
+          "attack": 1,
+          "defense": 3,
+          "movement": 2,
+          "initial_movement": 2
+        },
+        {
+          "id": "019d95a4-de90-7293-b8b6-afb537cb7060",
+          "name": "Character 3",
+          "hp": 4,
+          "attack": 1,
+          "defense": 1,
+          "movement": 4,
+          "initial_movement": 4
+        }
+      ]
+    },
+    "meta": {}
+  }[0m
+[{2026-04-16T09:35:03Z}] [Bot-01] [WINNER] Testing Pre-Win Upgrade Lock...
+
+[{2026-04-16T09:35:03Z}] [Bot-01] [36m[1m[CURL][0m [2mcurl -X POST -H 'Content-Type: application/json' -H 'Accept: application/json' -H 'Authorization: Bearer 251|R3UIdWgOJhz0WNJqDsXKZlrVt91wSPzshyKA3kGue376f69a' -d '{"stats":{"hp":"1"}}' 'http://localhost:8000/api/v1/profile/character/019d95a4-de8d-7366-8638-1c67868c24f1/upgrade'[0m
+[{2026-04-16T09:35:03Z}] [Bot-01] [31m[1m[REPLY 400][0m 
+  [2m{
+    "request_id": "019d95a4-df7c-727e-9e22-8812e993880f",
+    "message": "Upgrade failed: Total attributes (11) exceed the allowed cap (10 based on 0 wins).",
+    "success": false,
+    "data": {},
+    "meta": {}
+  }[0m
+[{2026-04-16T09:35:03Z}] [Bot-01] SUCCESS: Pre-Win upgrade properly rejected -> undefined
+
+[{2026-04-16T09:35:03Z}] [Bot-01] [36m[1m[CURL][0m [2mcurl -X POST -H 'Content-Type: application/json' -H 'Accept: application/json' -H 'Authorization: Bearer 251|R3UIdWgOJhz0WNJqDsXKZlrVt91wSPzshyKA3kGue376f69a' -d '{"game_mode":"1v1_PVP"}' 'http://localhost:8000/api/v1/matchmaking/join'[0m
+[{2026-04-16T09:35:03Z}] [Bot-01] [32m[1m[REPLY 200][0m 
+  [2m{
+    "request_id": "019d95a4-dfa1-702e-b7f7-4b4ad81901ee",
+    "message": "Success",
+    "success": true,
+    "data": {
+      "status": "queued",
+      "match_id": null,
+      "expected_participants": 2,
+      "empty_slots": 1
+    },
+    "meta": {}
+  }[0m
+[{2026-04-16T09:35:13Z}] [Bot-02] JS Exception: Assertion Failed: LOSER timed out waiting for WINNER!
+	at github.com/ecumeurs/upsiloncli/internal/script.(*Agent).jsAssert-fm (native)
+	at <eval>:41:19(128)
+
+[{2026-04-16T09:35:13Z}] [Bot-02] Script execution finished.
+[{2026-04-16T09:35:13Z}] [Bot-02] [LOSER] Cleaning up...
+
+[{2026-04-16T09:35:13Z}] [Bot-02] [36m[1m[CURL][0m [2mcurl -X DELETE -H 'Content-Type: application/json' -H 'Accept: application/json' -H 'Authorization: Bearer 252|r5J9CCehKDfN9ps2rcGXyGmQFOw893I8ljl04PQ416f9fc86' 'http://localhost:8000/api/v1/auth/delete'[0m
+[{2026-04-16T09:35:13Z}] [Bot-02] [32m[1m[REPLY 200][0m 
+  [2m{
+    "request_id": "019d95a5-068e-7262-8eac-67da030a6251",
+    "message": "Account terminated and anonymized.",
+    "success": true,
+    "data": null,
+    "meta": {}
+  }[0m
+[{2026-04-16T09:35:33Z}] [Bot-01] JS Exception: GoError: timeout waiting for event: match.found
+	at github.com/ecumeurs/upsiloncli/internal/script.(*Agent).jsWaitForEvent-fm (native)
+	at <eval>:63:38(195)
+
+[{2026-04-16T09:35:33Z}] [Bot-01] Script execution finished.
+[{2026-04-16T09:35:33Z}] [Bot-01] [WINNER] Cleaning up...
+
+[{2026-04-16T09:35:33Z}] [Bot-01] [36m[1m[CURL][0m [2mcurl -X DELETE -H 'Authorization: Bearer 251|R3UIdWgOJhz0WNJqDsXKZlrVt91wSPzshyKA3kGue376f69a' -H 'Content-Type: application/json' -H 'Accept: application/json' 'http://localhost:8000/api/v1/auth/delete'[0m
+[{2026-04-16T09:35:33Z}] [Bot-01] [32m[1m[REPLY 200][0m 
+  [2m{
+    "request_id": "019d95a5-54f4-732c-b45d-4fa3961eaa42",
+    "message": "Account terminated and anonymized.",
+    "success": true,
+    "data": null,
+    "meta": {}
+  }[0m
+[{2026-04-16T09:35:33Z}] All agents have finished execution and cleanup.
