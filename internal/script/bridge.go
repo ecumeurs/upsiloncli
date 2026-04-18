@@ -59,6 +59,10 @@ func (a *Agent) bindJSAPI() {
 		"syncGroup":         a.jsSyncGroup,
 		"joinQueue":         a.jsJoinQueue,
 		"waitForMatch":      a.jsWaitForMatch,
+
+		// Advanced Assertions
+		"assertEquals": a.jsAssertEquals,
+		"assertState": a.jsAssertState,
 	}
 	a.VM.Set("upsilon", upsilonObj)
 }
@@ -128,8 +132,42 @@ func (a *Agent) jsOnTeardown(call goja.FunctionCall) goja.Value {
 // jsAssert throws a JS exception if the condition is false
 func (a *Agent) jsAssert(condition bool, msg string) {
 	if !condition {
-		// Panic inside a Goja bridged function causes a catchable JS exception
 		panic(a.VM.ToValue(fmt.Sprintf("Assertion Failed: %s", msg)))
+	}
+}
+
+// jsAssertEquals compares actual and expected and fails if not equal
+func (a *Agent) jsAssertEquals(actual, expected interface{}, msg string) {
+	// Using fmt.Sprintf to handle mixed types generically for the final check report
+	actualStr := fmt.Sprintf("%v", actual)
+	expectedStr := fmt.Sprintf("%v", expected)
+
+	if actualStr != expectedStr {
+		panic(a.VM.ToValue(fmt.Sprintf("Assertion Failed: %s (Expected: %s, Actual: %s)", msg, expectedStr, actualStr)))
+	}
+}
+
+// jsAssertState validates that the current session state matches expectation
+func (a *Agent) jsAssertState(expectedState string, msg string) {
+	board := a.Session.LastBoard()
+	if board == nil {
+		panic(a.VM.ToValue(fmt.Sprintf("Assertion Failed: %s (Current state is NULL)", msg)))
+	}
+
+	// Example: compare some state flag or current player
+	// This is a high-level helper that could be expanded based on needs
+	// For now, let's keep it simple: check if game_finished status matches
+	if expectedState == "FINISHED" {
+		if !board.GameFinished {
+			panic(a.VM.ToValue(fmt.Sprintf("Assertion Failed: %s (Expected state FINISHED but match still active)", msg)))
+		}
+	} else if expectedState == "ACTIVE" {
+		if board.GameFinished {
+			panic(a.VM.ToValue(fmt.Sprintf("Assertion Failed: %s (Expected state ACTIVE but match is finished)", msg)))
+		}
+	} else {
+		// Generic string check against a combined state key if needed
+		panic(a.VM.ToValue(fmt.Sprintf("Assertion Failed: %s (Unsupported state check: %s)", msg, expectedState)))
 	}
 }
 
