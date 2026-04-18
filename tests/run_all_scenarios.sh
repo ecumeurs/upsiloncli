@@ -45,6 +45,7 @@ run_scenario() {
     # Run the farm
     if timeout 180 $CLI --farm $paths > "$log_file" 2>&1; then
         echo -e "\033[32m[PASSED]\033[0m"
+        echo "[SCENARIO_RESULT: PASSED]" >> "$log_file"
         PASSED_COUNT=$((PASSED_COUNT + 1))
     else
         echo -e "\033[31m[FAILED]\033[0m"
