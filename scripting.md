@@ -5,7 +5,9 @@
 Before writing a script, you need to know the tools available in your JavaScript environment.
 
 #### Core Actions
-* **`upsilon.call(route_name, {params})`**: Executes an API request. The `route_name` must match an endpoint in the registry (See [API Route Registry](#6-api-route-registry)). Returns the parsed JSON `data` object.
+* **`upsilon.call(route_name, {params})`**: Executes an API request. The `route_name` must match an endpoint in the registry (See [API Route Registry](#6-api-route-registry)). 
+    - **Returns**: The parsed JSON `data` object on success.
+    - **Throws**: A structured JSON object (the full API envelope) if `success` is false. You can access `error.message`, `error.status_code`, and `error.request_id` in a `catch` block. [[api_standard_envelope]]
 * **`upsilon.waitForEvent(event_name, timeout_ms)`**: Pauses the script until the WebSocket receives the specified event. Returns the event payload.
 * **`upsilon.log(message)`**: Prints a message to the console.
 * **`upsilon.planTravelToward(entity_id, target_pos, board)`**: Calculates an optimal path for an entity toward a coordinate. Returns an array of `{x, y}` positions.
