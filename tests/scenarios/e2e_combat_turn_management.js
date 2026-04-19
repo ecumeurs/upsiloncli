@@ -14,9 +14,17 @@ upsilon.bootstrapBot(accountName, password);
 const matchData = upsilon.joinWaitMatch("1v1_PVP");
 upsilon.syncGroup("combat_start", 2);
 
-// 2. Play 2 full rounds of combat
-for (let round = 1; round <= 2; round++) {
-    upsilon.log(`[Bot-${agentIndex}] --- ROUND ${round} ---`);
+// 2. Tactical Goal tracking
+let hasMoved = false;
+let hasAttacked = false;
+let hasPassed = false;
+let round = 0;
+
+// 3. Play until all core functionalities are exercised
+// This ensures that we don't just test turn logic, but also the execution of primary actions.
+while (!(hasMoved && hasAttacked && hasPassed)) {
+    round++;
+    upsilon.log(`[Bot-${agentIndex}] --- ROUND ${round} --- (Goal Progress: Move=${hasMoved}, Attack=${hasAttacked}, Pass=${hasPassed})`);
     
     // Wait for my turn
     const board = upsilon.waitNextTurn();
@@ -25,37 +33,63 @@ for (let round = 1; round <= 2; round++) {
     // ✅ Initiative check: Current entity must be mine
     const myChar = upsilon.currentCharacter();
     upsilon.assert(myChar != null, "Should have a selected character on my turn");
-    upsilon.log(`[Bot-${agentIndex}] Round ${round}: Acting with ${myChar.name} (HP: ${myChar.hp})`);
     
-    // Execute a valid action (Attack if foe in range, else move)
-    const foes = upsilon.myFoesCharacters();
-    let acted = false;
-    
-    for (let foe of foes) {
-        // Simple range check (dummy Manhattan distance)
-        const dist = Math.abs(myChar.position.x - foe.position.x) + Math.abs(myChar.position.y - foe.position.y);
-        if (dist === 1) {
-            upsilon.log(`[Bot-${agentIndex}] attacking ${foe.name} at distance ${dist}...`);
+    const foes = upsilon.myFoesCharacters().filter(f => !f.dead && f.hp > 0);
+    if (foes.length === 0) {
+        upsilon.log(`[Bot-${agentIndex}] No active foes remaining.`);
+        break;
+    }
+
+    const foe = foes[0];
+    const dist = Math.abs(myChar.position.x - foe.position.x) + Math.abs(myChar.position.y - foe.position.y);
+
+    if (!hasAttacked && dist === 1) {
+        // Goal: Attack
+        upsilon.log(`[Bot-${agentIndex}] Round ${round}: attacking ${foe.name}...`);
+        upsilon.call("game_action", {
+            id: matchData.match_id,
+            type: "attack",
+            entity_id: myChar.id,
+            target_coords: foe.position.x + "," + foe.position.y
+        });
+        hasAttacked = true;
+    } else if (!hasMoved && dist > 1) {
+        // Goal: Move
+        const path = upsilon.planTravelToward(myChar.id, foe.position, board);
+        if (path && path.length > 0) {
+            upsilon.log(`[Bot-${agentIndex}] Round ${round}: moving toward ${foe.name}...`);
             upsilon.call("game_action", {
                 id: matchData.match_id,
-                type: "attack",
+                type: "move",
                 entity_id: myChar.id,
-                target_id: foe.id
+                target_coords: path.map(p => `${p.x},${p.y}`).join(";")
             });
-            acted = true;
-            break;
+            hasMoved = true;
+        } else {
+            // Path is blocked or no movement possible, fallback to passing
+            upsilon.log(`[Bot-${agentIndex}] Path to ${foe.name} blocked or out of range, passing...`);
+            upsilon.call("game_action", {
+                id: matchData.match_id,
+                type: "pass",
+                entity_id: myChar.id
+            });
+            hasPassed = true;
         }
-    }
-    
-    if (!acted) {
-        upsilon.log(`[Bot-${agentIndex}] moving toward opponent...`);
-        // We just pass for turn management validation if we can't easily pathfind here
+    } else {
+        // Goal: Pass
+        upsilon.log(`[Bot-${agentIndex}] Round ${round}: passing turn...`);
         upsilon.call("game_action", {
             id: matchData.match_id,
             type: "pass",
             entity_id: myChar.id
         });
+        hasPassed = true;
+    }
+
+    // Safety timeout to prevent infinite loops in broken board states
+    if (round > 20) {
+        upsilon.assert(false, "Test timed out before achieving all tactical goals (Move, Attack, Pass)");
     }
 }
 
-upsilon.log(`[Bot-${agentIndex}] CR-06: COMBAT TURN MANAGEMENT PASSED (partial simulation).`);
+upsilon.log(`[Bot-${agentIndex}] CR-06: COMBAT TURN MANAGEMENT PASSED (Validated Move, Attack, and Pass).`);

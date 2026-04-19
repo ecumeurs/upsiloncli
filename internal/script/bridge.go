@@ -88,6 +88,10 @@ func (a *Agent) jsCall(routeName string, params map[string]interface{}) (interfa
 		return nil, err
 	}
 
+	if !resp.Success {
+		panic(a.VM.ToValue(resp))
+	}
+
 	// PROACTIVE TURN MEMORY: If an attack was successful, mark it immediately
 	if routeName == "game_action" {
 		actionType, _ := params["type"].(string)
