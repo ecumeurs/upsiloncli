@@ -135,5 +135,9 @@ These routes are available via `upsilon.call(route_name, params)`.
 | **`game_action`** | POST | `/api/v1/game/{id}/action` | Move or Attack | `id`, `entity_id`, `type` (move/attack/pass), `target_coords` (x,y) |
 | **`game_forfeit`** | POST | `/api/v1/game/{id}/forfeit` | Concede the match | `id` |
 | **`leaderboard`** | GET | `/api/v1/leaderboard` | Get rankings | `mode` (1v1_PVP, etc) |
-| **`admin_users`** | GET | `/api/v1/admin/users` | (Admin Only) List users | - |
-| **`admin_login`** | POST | `/api/v1/auth/admin/login` | (Admin Only) Auth Admin | `account_name`, `password` |
+| **`admin_login`** | POST | `/api/v1/auth/admin/login` | (Admin Only) Administrative auth | `account_name`, `password` |
+| **`admin_users`** | GET | `/api/v1/admin/users` | (Admin Only) List users (paginated) | `search` (Optional), `cursor` (Optional) |
+| **`admin_user_anonymize`** | POST | `/api/v1/admin/users/{name}/anonymize` | (Admin Only) GDPR force anonymize | `account_name` |
+| **`admin_user_delete`** | DELETE | `/api/v1/admin/users/{name}` | (Admin Only) Administrative soft delete | `account_name` |
+| **`admin_history`** | GET | `/api/v1/admin/history` | (Admin Only) List match history | `search` (Optional), `cursor` (Optional) |
+| **`admin_history_purge`** | POST | `/api/v1/admin/history/purge` | (Admin Only) Purge old records (>90d) | - |

@@ -701,6 +701,8 @@ func RegisterAll(reg *Registry) {
 	reg.Register(&AdminUserList{})
 	reg.Register(&AdminUserAnonymize{})
 	reg.Register(&AdminUserDelete{})
+	reg.Register(&AdminHistory{})
+	reg.Register(&AdminPurge{})
 
 	// Profile & Characters
 	reg.Register(&ProfileGet{})
