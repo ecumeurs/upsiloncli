@@ -5,10 +5,14 @@
 Before writing a script, you need to know the tools available in your JavaScript environment.
 
 #### Core Actions
-* **`upsilon.call(route_name, {params})`**: Executes an API request. The `route_name` must match an endpoint in the registry (e.g., `auth_login`, `game_action`). Returns the parsed JSON `data` object.
-* **`upsilon.waitForEvent(event_name, timeout_ms)`**: Pauses the script until the WebSocket receives the specified event (e.g., `match.found`, `board.updated`). Returns the event payload.
-* **`upsilon.log(message)`**: Prints a message to the console, automatically prefixed with the agent's ID (e.g., `[Bot-1] Moving to 3,2`).
-* **`upsilon.planTravelToward(entity_id, target_pos, board)`**: Calculates the optimal path for an entity toward a coordinate. It handles grid occupancy (units/obstacles) and movement credit limits. Returns an array of positions.
+* **`upsilon.call(route_name, {params})`**: Executes an API request. The `route_name` must match an endpoint in the registry (See [API Route Registry](#6-api-route-registry)). Returns the parsed JSON `data` object.
+* **`upsilon.waitForEvent(event_name, timeout_ms)`**: Pauses the script until the WebSocket receives the specified event. Returns the event payload.
+* **`upsilon.log(message)`**: Prints a message to the console.
+* **`upsilon.planTravelToward(entity_id, target_pos, board)`**: Calculates an optimal path for an entity toward a coordinate. Returns an array of `{x, y}` positions.
+* **`upsilon.findPath(start_pos, target_pos, board)`**: Lower-level pathfinding utility between any two coordinates.
+* **`upsilon.assert(condition, message)`**: Throws a JS exception if the condition is false, triggering an automated teardown.
+* **`upsilon.assertEquals(actual, expected, message)`**: Compares two values and throws if they differ.
+* **`upsilon.assertState(expectedState, message)`**: Validates if the game is currently `ACTIVE` or `FINISHED`.
 
 #### Session Context (Local to this specific Agent)
 * **`upsilon.getContext(key)`**: Retrieves a value from the agent's local session (e.g., `user_id`, `match_id`).
@@ -58,6 +62,8 @@ Characters exposed via `upsilon.currentCharacter()` or `upsilon.myCharacters()` 
 
 * **`upsilon.bootstrapBot(name, password, [overrides])`**: The recommended way to start a bot. It handles registration delay, account creation, and registers an automatic teardown that leaves the queue, forfeits matches, and deletes the account on exit.
 * **`upsilon.joinWaitMatch(game_mode)`**: Joins matchmaking and blocks until a match is found. Returns match data.
+* **`upsilon.joinQueue(game_mode)`**: Sends the join request without blocking.
+* **`upsilon.waitForMatch()`**: Blocks until a `match.found` event is received for the current session.
 * **`upsilon.waitNextTurn()`**: Blocks until it is the bot's turn or the game ends. Returns the `board` state or `null` if the game finished.
 * **`upsilon.syncGroup(key, count)`**: Blocks until `count` agents have called this with the same `key`.
 * **`upsilon.humanDelay()`**: Random sleep (1-15s) to simulate human pacing.
@@ -102,3 +108,30 @@ Once your scripts are written, you execute them using the CLI coordinator.
 ```bash
 ./bin/upsiloncli --farm bot_alpha.js bot_beta.js --logs ./logs
 ```
+
+---
+
+### **6. API Route Registry**
+
+These routes are available via `upsilon.call(route_name, params)`.
+
+| Route Name | Method | Path | Description | Required Parameters |
+| :--- | :--- | :--- | :--- | :--- |
+| **`auth_login`** | POST | `/api/v1/auth/login` | Authenticate and receive JWT | `account_name`, `password` |
+| **`auth_register`** | POST | `/api/v1/auth/register` | Create account + roster | `account_name`, `email`, `password`, `password_confirmation`, `full_address`, `birth_date` |
+| **`auth_logout`** | POST | `/api/v1/auth/logout` | Terminate session | - |
+| **`auth_delete`** | DELETE | `/api/v1/auth/delete` | GDPR right to be forgotten | - |
+| **`profile_get`** | GET | `/api/v1/profile` | Get player profile stats | - |
+| **`profile_characters`** | GET | `/api/v1/profile/characters` | List all characters | - |
+| **`profile_character`** | GET | `/api/v1/profile/character/{characterId}` | Get character details | `characterId` |
+| **`character_rename`** | POST | `/api/v1/profile/character/{characterId}/rename` | Rename a character | `characterId`, `name` |
+| **`character_upgrade`** | POST | `/api/v1/profile/character/{characterId}/upgrade` | Allocate stat points | `characterId`, `hp`, `attack`, `defense`, `movement` |
+| **`matchmaking_join`** | POST | `/api/v1/matchmaking/join` | Join a queue | `game_mode` |
+| **`matchmaking_status`** | GET | `/api/v1/matchmaking/status` | Poll queue status | - |
+| **`matchmaking_leave`** | DELETE | `/api/v1/matchmaking/leave` | Leave the queue | - |
+| **`game_state`** | GET | `/api/v1/game/{id}` | Get board state | `id` (match_id) |
+| **`game_action`** | POST | `/api/v1/game/{id}/action` | Move or Attack | `id`, `entity_id`, `type` (move/attack/pass), `target_coords` (x,y) |
+| **`game_forfeit`** | POST | `/api/v1/game/{id}/forfeit` | Concede the match | `id` |
+| **`leaderboard`** | GET | `/api/v1/leaderboard` | Get rankings | `mode` (1v1_PVP, etc) |
+| **`admin_users`** | GET | `/api/v1/admin/users` | (Admin Only) List users | - |
+| **`admin_login`** | POST | `/api/v1/auth/admin/login` | (Admin Only) Auth Admin | `account_name`, `password` |
