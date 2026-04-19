@@ -19,7 +19,7 @@ func (e *AdminUserList) Auth() bool          { return true }
 func (e *AdminUserList) Params() []Param     { return nil }
 
 func (e *AdminUserList) Next() []string {
-	return []string{"admin_user_anonymize", "admin_user_delete"}
+	return []string{"admin_user_anonymize", "admin_user_delete", "admin_history"}
 }
 
 func (e *AdminUserList) ExecuteRaw(client *api.Client, sess *session.Session, inputs map[string]string) (*api.Response, error) {
@@ -100,5 +100,75 @@ func (e *AdminUserDelete) Execute(client *api.Client, sess *session.Session, inp
 		return err
 	}
 	client.Printer.System(fmt.Sprintf("Deactivation: %s", resp.Message))
+	return nil
+}
+
+// AdminHistory implements Endpoint for GET /api/v1/admin/history.
+type AdminHistory struct{}
+
+func (e *AdminHistory) Name() string        { return "admin_history" }
+func (e *AdminHistory) Description() string { return "List match history with manual pagination and search" }
+func (e *AdminHistory) Method() string      { return "GET" }
+func (e *AdminHistory) Path() string        { return "/api/v1/admin/history" }
+func (e *AdminHistory) Auth() bool          { return true }
+func (e *AdminHistory) Params() []Param {
+	return []Param{
+		{Name: "search", Hint: "search by match ID or player", Required: false},
+		{Name: "cursor", Hint: "pagination cursor", Required: false},
+	}
+}
+
+func (e *AdminHistory) Next() []string {
+	return []string{"admin_history_purge"}
+}
+
+func (e *AdminHistory) ExecuteRaw(client *api.Client, sess *session.Session, inputs map[string]string) (*api.Response, error) {
+	params := make(map[string]string)
+	if v, ok := inputs["search"]; ok {
+		params["search"] = v
+	}
+	if v, ok := inputs["cursor"]; ok {
+		params["cursor"] = v
+	}
+	return client.GetWithParams(e.Path(), params)
+}
+
+func (e *AdminHistory) Execute(client *api.Client, sess *session.Session, inputs map[string]string) error {
+	resp, err := e.ExecuteRaw(client, sess, inputs)
+	if err != nil {
+		return err
+	}
+	if data, ok := resp.Data.(map[string]interface{}); ok {
+		if items, ok := data["items"].([]interface{}); ok {
+			client.Printer.System(fmt.Sprintf("History: Found %d records.", len(items)))
+		}
+	}
+	return nil
+}
+
+// AdminPurge implements Endpoint for POST /api/v1/admin/history/purge.
+type AdminPurge struct{}
+
+func (e *AdminPurge) Name() string        { return "admin_history_purge" }
+func (e *AdminPurge) Description() string { return "Purge match history older than 90 days" }
+func (e *AdminPurge) Method() string      { return "POST" }
+func (e *AdminPurge) Path() string        { return "/api/v1/admin/history/purge" }
+func (e *AdminPurge) Auth() bool          { return true }
+func (e *AdminPurge) Params() []Param     { return nil }
+
+func (e *AdminPurge) Next() []string {
+	return []string{"admin_history"}
+}
+
+func (e *AdminPurge) ExecuteRaw(client *api.Client, sess *session.Session, inputs map[string]string) (*api.Response, error) {
+	return client.Post(e.Path(), nil)
+}
+
+func (e *AdminPurge) Execute(client *api.Client, sess *session.Session, inputs map[string]string) error {
+	resp, err := e.ExecuteRaw(client, sess, inputs)
+	if err != nil {
+		return err
+	}
+	client.Printer.System(resp.Message)
 	return nil
 }
