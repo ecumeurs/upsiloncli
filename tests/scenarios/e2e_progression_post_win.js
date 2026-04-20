@@ -1,6 +1,7 @@
 // upsiloncli/tests/scenarios/e2e_progression_post_win.js
 // @spec-link [[uc_progression_stat_allocation]]
 // @spec-link [[us_win_progression_win_alloc_point]]
+// @test-link [[rule_progression]]
 
 const agentIndex = upsilon.getAgentIndex();
 const botId = Math.floor(Math.random() * 10000) + "_" + agentIndex;
