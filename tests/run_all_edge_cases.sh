@@ -1,5 +1,5 @@
 #!/bin/bash
-# run_all_scenarios.sh - Centralized E2E Customer Scenario Runner
+# run_all_edge_cases.sh - Centralized Edge Case Test Runner
 
 set -e
 
@@ -12,26 +12,23 @@ LOG_DIR="tests/logs"
 mkdir -p "$LOG_DIR"
 
 echo "=================================================="
-echo "      UPSILON E2E CENTRALIZED SUITE RUNNER"
+echo "      UPSILON EDGE CASE SUITE RUNNER"
 echo "=================================================="
 
 FAILED_TESTS=""
 PASSED_COUNT=0
 FAILED_COUNT=0
 
-run_scenario() {
+run_test() {
     local script=$1
     local name=$(basename "$script" .js)
     local log_file="$LOG_DIR/${name}.log"
     
-    # Determine agent count (default 1, check if pvp or coordinate scripts)
+    # Determine agent count
+    # Most edge cases are 1 agent, but some validation requires coordination
     local agents=1
-    if [[ "$name" == *"pvp"* ]] || [[ "$name" == *"coordination"* ]] || [[ "$name" == *"combat"* ]] || [[ "$name" == *"friendly_fire"* ]] || [[ "$name" == *"resolution_standard"* ]] || [[ "$name" == *"progression_constraints"* ]]; then
+    if [[ "$name" == *"pvp"* ]] || [[ "$name" == *"coordination"* ]] || [[ "$name" == *"combat"* ]] || [[ "$name" == *"friendly_fire"* ]] || [[ "$name" == *"out_of_turn"* ]]; then
         agents=2
-    fi
-    
-    if [[ "$name" == *"2v2"* ]]; then
-        agents=4
     fi
 
     echo -n "Running $name (Agents: $agents)... "
@@ -43,7 +40,8 @@ run_scenario() {
     done
 
     # Run the farm
-    if timeout 180 $CLI --farm $paths > "$log_file" 2>&1; then
+    # Use UPSILON_CLI_PATH or just 'upsiloncli' (should be in PATH)
+    if timeout 120 $CLI --farm $paths > "$log_file" 2>&1; then
         echo -e "\033[32m[PASSED]\033[0m"
         echo "[SCENARIO_RESULT: PASSED]" >> "$log_file"
         PASSED_COUNT=$((PASSED_COUNT + 1))
@@ -54,19 +52,19 @@ run_scenario() {
     fi
 }
 
-# Run all scenarios in alphabetical order
-for script in $(ls $SCENARIO_DIR/e2e_*.js | sort); do
-    run_scenario "$script"
+# Run all edge case scripts in alphabetical order
+for script in $(ls $SCENARIO_DIR/edge_*.js | sort); do
+    run_test "$script"
 done
 
 echo "=================================================="
-echo "Suite Results:"
+echo "Edge Case Results:"
 echo "  Passed: $PASSED_COUNT"
 echo "  Failed: $FAILED_COUNT"
 echo "=================================================="
 
 if [ $FAILED_COUNT -gt 0 ]; then
-    echo "Failed scenarios: $FAILED_TESTS"
+    echo "Failed edge cases: $FAILED_TESTS"
     exit 1
 fi
 
