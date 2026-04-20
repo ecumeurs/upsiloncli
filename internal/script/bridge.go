@@ -74,7 +74,8 @@ func (a *Agent) jsLog(msg interface{}) {
 func (a *Agent) jsCall(routeName string, params map[string]interface{}) (interface{}, error) {
 	ep := a.Registry.Get(routeName)
 	if ep == nil {
-		return nil, fmt.Errorf("unknown route: %s", routeName)
+		a.throwStructuredError(fmt.Sprintf("unknown route: %s", routeName))
+		return nil, nil // unreachable
 	}
 
 	// Convert JS params to string map expected by endpoint.Execute
@@ -85,7 +86,8 @@ func (a *Agent) jsCall(routeName string, params map[string]interface{}) (interfa
 
 	resp, err := ep.ExecuteRaw(a.Client, a.Session, inputs)
 	if err != nil {
-		return nil, err
+		a.throwStructuredError(fmt.Sprintf("transport error: %v", err))
+		return nil, nil // unreachable
 	}
 
 	if !resp.Success {
@@ -108,6 +110,15 @@ func (a *Agent) jsCall(routeName string, params map[string]interface{}) (interfa
 	a.Listener.Sync()
 
 	return resp.Data, nil
+}
+
+func (a *Agent) throwStructuredError(msg string) {
+	panic(a.VM.ToValue(map[string]interface{}{
+		"success":    false,
+		"message":    msg,
+		"request_id": "cli-internal",
+		"data":       nil,
+	}))
 }
 
 func (a *Agent) jsGetContext(key string) string {
@@ -517,7 +528,7 @@ func (a *Agent) jsBootstrapBot(call goja.FunctionCall) goja.Value {
 
 	resp, err := a.jsCall("auth_register", params)
 	if err != nil {
-		panic(a.VM.ToValue("Registration failed: " + err.Error()))
+		a.throwStructuredError("Registration failed: " + err.Error())
 	}
 
 	a.jsLog("Bot bootstrapped successfully.")
@@ -574,7 +585,7 @@ func (a *Agent) jsJoinWaitMatch(gameMode string) interface{} {
 		start := time.Now()
 		for !a.Listener.IsSubscribed(channel) {
 			if time.Since(start) > 30*time.Second {
-				panic(a.VM.ToValue("Timed out waiting for private channel subscription"))
+				a.throwStructuredError("Timed out waiting for private channel subscription")
 			}
 			a.jsSleep(100)
 		}
@@ -583,21 +594,21 @@ func (a *Agent) jsJoinWaitMatch(gameMode string) interface{} {
 	a.jsLog("Joining queue: " + gameMode)
 	_, err := a.jsCall("matchmaking_join", map[string]interface{}{"game_mode": gameMode})
 	if err != nil {
-		panic(a.VM.ToValue("Failed to join queue: " + err.Error()))
+		a.throwStructuredError("Failed to join queue: " + err.Error())
 	}
 
 	a.jsLog("Waiting for match.found...")
 	matchEnvelope, err := a.jsWaitForEvent("match.found", 60000)
 	if err != nil {
-		panic(a.VM.ToValue("Matchmaking timed out or failed: " + err.Error()))
+		a.throwStructuredError("Matchmaking timed out or failed: " + err.Error())
 	}
 
 	// Safely extract match_id
 	env, ok := matchEnvelope.(map[string]interface{})
-	if !ok { panic(a.VM.ToValue("Invalid match envelope structure")) }
+	if !ok { a.throwStructuredError("Invalid match envelope structure") }
 	
 	data, ok := env["data"].(map[string]interface{})
-	if !ok { panic(a.VM.ToValue("Invalid match event data structure")) }
+	if !ok { a.throwStructuredError("Invalid match event data structure") }
 
 	matchID, _ := data["match_id"].(string)
 	if matchID != "" {
@@ -632,7 +643,7 @@ func (a *Agent) jsWaitNextTurn() interface{} {
 		// Wait for either tactical progression or game termination
 		eventData, eventName, err := a.Listener.WaitForAnyData(a.Ctx, []string{"board.updated", "game.ended"}, 60000)
 		if err != nil {
-			panic(a.VM.ToValue("Turn wait timed out or failed: " + err.Error()))
+			a.throwStructuredError("Turn wait timed out or failed: " + err.Error())
 		}
 
 		if eventName == "game.ended" {
@@ -738,7 +749,7 @@ func (a *Agent) jsSyncGroup(key string, count int) {
 					actualCount = c
 				}
 			}
-			panic(a.VM.ToValue(fmt.Sprintf("SyncGroup '%s' timed out after 60s (got %v/%v agents)", key, actualCount, count)))
+			a.throwStructuredError(fmt.Sprintf("SyncGroup '%s' timed out after 60s (got %v/%v agents)", key, actualCount, count))
 		}
 
 		// Check if all agents are ready
@@ -750,7 +761,7 @@ func (a *Agent) jsSyncGroup(key string, count int) {
 				if ok {
 					expectedStr, _ := expected.(string)
 					if myMatchID != expectedStr {
-						panic(a.VM.ToValue(fmt.Sprintf("SyncGroup '%s' failed: Match ID mismatch. Agent %v expected match '%s' but found '%s'.", key, a.AgentIndex, expectedStr, myMatchID)))
+						a.throwStructuredError(fmt.Sprintf("SyncGroup '%s' failed: Match ID mismatch. Agent %v expected match '%s' but found '%s'.", key, a.AgentIndex, expectedStr, myMatchID))
 					}
 					a.jsLog(fmt.Sprintf("Match ID verified for sync '%s' (%v/%v). Waiting for proceed signal...", key, c, count))
 				} else {
@@ -795,7 +806,7 @@ func (a *Agent) jsJoinQueue(gameMode string) interface{} {
 	a.jsLog("Requesting matchmaking join: " + gameMode)
 	resp, err := a.jsCall("matchmaking_join", map[string]interface{}{"game_mode": gameMode})
 	if err != nil {
-		panic(a.VM.ToValue("Failed to join queue: " + err.Error()))
+		a.throwStructuredError("Failed to join queue: " + err.Error())
 	}
 	return resp
 }
