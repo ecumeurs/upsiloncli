@@ -45,6 +45,7 @@ func main() {
 		defaultBaseURL = "http://localhost:8000"
 	}
 	baseURL := flag.String("base-url", defaultBaseURL, "Laravel API base URL")
+	local := flag.Bool("local", false, "Force local configuration (127.0.0.1:8000)")
 	auto := flag.Bool("auto", false, "Run full journey in autopilot mode")
 	persist := flag.Bool("persist", false, "Load/save session to .upsilon_session.json")
 	flag.BoolVar(persist, "P", false, "Load/save session to .upsilon_session.json (shorthand)")
@@ -55,6 +56,13 @@ func main() {
 	logDir := flag.String("logs", "", "Directory to store individual agent log files")
 	flag.StringVar(logDir, "L", "", "Directory to store individual agent log files (shorthand)")
 	flag.Parse()
+
+	if *local {
+		*baseURL = "http://127.0.0.1:8000"
+		os.Setenv("REVERB_HOST", "127.0.0.1")
+		os.Setenv("REVERB_PORT", "8080")
+		os.Setenv("REVERB_SCHEME", "http")
+	}
 
 	if *auto {
 		ts := time.Now().UTC().Format("2006-01-02T15:04:05.000Z07:00")
