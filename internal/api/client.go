@@ -13,6 +13,7 @@ import (
 
 	"github.com/ecumeurs/upsiloncli/internal/display"
 	"github.com/ecumeurs/upsiloncli/internal/session"
+	"github.com/google/uuid"
 )
 
 // Client is the HTTP client used by all endpoint handlers.
@@ -46,22 +47,45 @@ type Response struct {
 	RawBody    string
 }
 
+// RequestEnvelope is the standard envelope for outgoing requests.
+// @spec-link [[api_standard_envelope]]
+type RequestEnvelope struct {
+	RequestID string      `json:"request_id"`
+	Message   string      `json:"message"`
+	Success   bool        `json:"success"`
+	Data      interface{} `json:"data"`
+	Meta      interface{} `json:"meta"`
+}
+
 // Do executes an HTTP request, logs the curl command and response,
 // and handles JWT renewal transparently.
 func (c *Client) Do(method, path string, body interface{}) (*Response, error) {
 	fullURL := c.BaseURL + path
 
-	// Serialize body
+	// Wrap in Standard Envelope @spec-link [[api_standard_envelope]]
+	uid, _ := uuid.NewV7()
+	requestID := uid.String()
+
+	envelope := RequestEnvelope{
+		RequestID: requestID,
+		Message:   fmt.Sprintf("CLI Request: %s %s", method, path),
+		Success:   true,
+		Data:      body,
+		Meta:      map[string]interface{}{},
+	}
+	if body == nil {
+		envelope.Data = map[string]interface{}{}
+	}
+
+	// Serialize envelope
 	var bodyReader io.Reader
 	var bodyBytes []byte
-	if body != nil {
-		var err error
-		bodyBytes, err = json.Marshal(body)
-		if err != nil {
-			return nil, fmt.Errorf("marshal body: %w", err)
-		}
-		bodyReader = bytes.NewReader(bodyBytes)
+	var err error
+	bodyBytes, err = json.Marshal(envelope)
+	if err != nil {
+		return nil, fmt.Errorf("marshal envelope: %w", err)
 	}
+	bodyReader = bytes.NewReader(bodyBytes)
 
 	// Build request
 	req, err := http.NewRequest(method, fullURL, bodyReader)
@@ -71,6 +95,7 @@ func (c *Client) Do(method, path string, body interface{}) (*Response, error) {
 
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
+	req.Header.Set("X-Request-ID", requestID)
 
 	if token := c.Session.Token(); token != "" {
 		req.Header.Set("Authorization", "Bearer "+token)
