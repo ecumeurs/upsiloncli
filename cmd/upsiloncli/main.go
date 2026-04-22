@@ -40,11 +40,14 @@ func main() {
 		os.Exit(1)
 	}
 
-	defaultBaseURL := os.Getenv("UPSILON_BASE_URL")
-	if defaultBaseURL == "" {
-		defaultBaseURL = "http://localhost:8000"
+	upsilonBaseURL := os.Getenv("UPSILON_BASE_URL")
+	if upsilonBaseURL == "" {
+		ts := time.Now().UTC().Format("2006-01-02T15:04:05.000Z07:00")
+		fmt.Printf("[{%s}] \033[31m\033[1m[ERROR]\033[0m Mandatory environment variable UPSILON_BASE_URL is missing.\n", ts)
+		fmt.Println("Please set it in your system environment or a .env file.")
+		os.Exit(1)
 	}
-	baseURL := flag.String("base-url", defaultBaseURL, "Laravel API base URL")
+	baseURL := flag.String("base-url", upsilonBaseURL, "Laravel API base URL")
 	local := flag.Bool("local", false, "Force local configuration (127.0.0.1:8000)")
 	auto := flag.Bool("auto", false, "Run full journey in autopilot mode")
 	persist := flag.Bool("persist", false, "Load/save session to .upsilon_session.json")
