@@ -68,7 +68,7 @@ type AdminLogin struct {
 
 func (e *AdminLogin) Name() string        { return "admin_login" }
 func (e *AdminLogin) Description() string { return "Authenticate as administrator and receive high-privilege JWT" }
-func (e *AdminLogin) Path() string        { return "/api/v1/auth/admin/login" }
+func (e *AdminLogin) Path() string        { return "/api/v1/admin/login" }
 
 func (e *AdminLogin) Next() []string {
 	return []string{"admin_users", "profile_get"}

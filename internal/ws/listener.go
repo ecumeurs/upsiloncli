@@ -36,6 +36,8 @@ type Listener struct {
 	waiters map[string][]chan interface{}
 	buffer  map[string][]interface{}
 	subsAck map[string]bool
+	hooks   []func(string, interface{})
+	hooksMu sync.Mutex
 }
 
 // NewListener creates a new WebSocket listener.
@@ -61,6 +63,27 @@ func NewListener(client *api.Client, sess *session.Session, printer *display.Pri
 		subsAck: make(map[string]bool),
 	}
 	return l
+}
+// Connect starts the WebSocket connection.
+func (l *Listener) Connect() {
+	l.Start()
+}
+
+// Disconnect stops the WebSocket connection.
+func (l *Listener) Disconnect() {
+	l.Stop()
+}
+
+// Subscribe ensures we are subscribed to a channel.
+func (l *Listener) Subscribe(channel string) {
+	l.ensureSubscription(channel)
+}
+
+// AddHook registers a callback for every received event.
+func (l *Listener) AddHook(h func(string, interface{})) {
+	l.hooksMu.Lock()
+	defer l.hooksMu.Unlock()
+	l.hooks = append(l.hooks, h)
 }
 
 // Start opens the connection and starts the message loop.
@@ -389,6 +412,13 @@ func (l *Listener) notifyWaiters(eventName string, data json.RawMessage) {
 		default: // skip if channel is full
 		}
 	}
+
+	// 3. Trigger global hooks
+	l.hooksMu.Lock()
+	for _, h := range l.hooks {
+		h(eventName, parsed)
+	}
+	l.hooksMu.Unlock()
 }
 
 // Sync reconciles active WebSocket subscriptions with the current session state.

@@ -35,26 +35,18 @@ upsilon.log(`[Bot-${agentIndex}] Character ID: ${charId}`);
 // 2. Perform 3 rerolls (should succeed)
 for (let i = 1; i <= 3; i++) {
     upsilon.log(`[Bot-${agentIndex}] Reroll #${i}...`);
-    try {
-        const rerollResult = upsilon.call("character_rename", {
-            characterId: charId,
-            name: `Rerolled${i}`
-        });
-        // Using rename as proxy for reroll action (may need actual reroll endpoint)
-        upsilon.log(`[Bot-${agentIndex}] ✅ Reroll #${i} succeeded`);
-    } catch (e) {
-        upsilon.log(`[Bot-${agentIndex}] Reroll #${i} failed: ${e.message}`);
-    }
-
+    const rerollResult = upsilon.call("character_reroll", {
+        characterId: charId
+    });
+    upsilon.log(`[Bot-${agentIndex}] ✅ Reroll #${i} succeeded`);
     upsilon.sleep(500);  // Small delay between rerolls
 }
 
 // 3. Attempt 4th reroll (should fail)
 upsilon.log(`[Bot-${agentIndex}] Attempting 4th reroll (should fail)...`);
 try {
-    upsilon.call("character_rename", {
-        characterId: charId,
-        name: "ShouldFail"
+    upsilon.call("character_reroll", {
+        characterId: charId
     });
     upsilon.assert(false, "ERROR: 4th reroll was accepted!");
 } catch (e) {
@@ -62,9 +54,11 @@ try {
 }
 
 // 4. Verify reroll count
-const updatedProfile = upsilon.call("profile_get", {});
-upsilon.log(`[Bot-${agentIndex}] Reroll count: ${updatedProfile.reroll_count}`);
-// Expected: reroll_count should be 3
+const updatedChar = upsilon.call("character_get", {
+    characterId: charId
+});
+upsilon.log(`[Bot-${agentIndex}] Reroll count: ${updatedChar.reroll_count}`);
+upsilon.assertEquals(updatedChar.reroll_count, 3, "Reroll count should be 3");
 
 // Cleanup
 upsilon.onTeardown(() => {

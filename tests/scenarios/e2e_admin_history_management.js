@@ -13,9 +13,9 @@ upsilon.log("Starting E2E Admin History Management Verification");
 
 try {
     upsilon.log("Logging in as Admin...");
-    upsilon.call("auth_admin_login", {
+    upsilon.call("admin_login", {
         account_name: "admin",
-        password: "AdminPassword123!"
+        password: "AdminPassword123!" // Seeded value in .env.ci
     });
 
     // 1. Fetch History

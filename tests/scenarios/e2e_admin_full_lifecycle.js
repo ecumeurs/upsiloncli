@@ -15,9 +15,9 @@ upsilon.log("Starting E2E Admin Full Lifecycle Verification");
 try {
     // 1. Admin Login
     upsilon.log("1. Testing Administrative Authentication...");
-    const loginResp = upsilon.call("auth_admin_login", {
+    const loginResp = upsilon.call("admin_login", {
         account_name: "admin",
-        password: "AdminPassword123!" // Seeded value
+        password: "AdminPassword123!" // Seeded value in .env.ci
     });
     
     upsilon.log("✅ Admin Authentication Successful.");

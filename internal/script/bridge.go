@@ -63,6 +63,17 @@ func (a *Agent) bindJSAPI() {
 		// Advanced Assertions
 		"assertEquals": a.jsAssertEquals,
 		"assertState": a.jsAssertState,
+
+		// New WebSocket control
+		"wsConnect":      a.jsWsConnect,
+		"wsDisconnect":   a.jsWsDisconnect,
+		"wsStatus":       a.jsWsStatus,
+		"wsSubscribe":    a.jsWsSubscribe,
+		"wsIsSubscribed": a.jsWsIsSubscribed,
+
+		// Callback system
+		"onEvent":       a.jsOnEvent,
+		"processEvents": a.jsProcessEvents,
 	}
 	a.VM.Set("upsilon", upsilonObj)
 }
@@ -131,7 +142,25 @@ func (a *Agent) jsSetContext(key, value string) {
 }
 
 func (a *Agent) jsWaitForEvent(eventName string, timeoutMs int) (interface{}, error) {
-	return a.Listener.WaitForData(a.Ctx, eventName, timeoutMs)
+	start := time.Now()
+	for {
+		// Check for already buffered data in Listener
+		if data, err := a.Listener.WaitForData(a.Ctx, eventName, 10); err == nil {
+			return data, nil
+		}
+
+		a.jsProcessEvents()
+
+		if time.Since(start) > time.Duration(timeoutMs)*time.Millisecond {
+			return nil, fmt.Errorf("timeout waiting for event: %s", eventName)
+		}
+
+		select {
+		case <-a.Ctx.Done():
+			return nil, a.Ctx.Err()
+		case <-time.After(10 * time.Millisecond):
+		}
+	}
 }
 
 // jsOnTeardown stores a JS callback to be executed later
@@ -200,10 +229,14 @@ func (a *Agent) jsGetShared(key string) interface{} {
 
 // jsSleep pauses the current agent's goroutine without affecting others.
 func (a *Agent) jsSleep(ms int) {
-	select {
-	case <-a.Ctx.Done():
-		return
-	case <-time.After(time.Duration(ms) * time.Millisecond):
+	start := time.Now()
+	for time.Since(start) < time.Duration(ms)*time.Millisecond {
+		a.jsProcessEvents()
+		select {
+		case <-a.Ctx.Done():
+			return
+		case <-time.After(10 * time.Millisecond):
+		}
 	}
 }
 
@@ -802,35 +835,71 @@ func (a *Agent) jsSyncGroup(key string, count int) {
 	}
 }
 
-func (a *Agent) jsJoinQueue(gameMode string) interface{} {
-	a.jsLog("Requesting matchmaking join: " + gameMode)
-	resp, err := a.jsCall("matchmaking_join", map[string]interface{}{"game_mode": gameMode})
-	if err != nil {
-		a.throwStructuredError("Failed to join queue: " + err.Error())
-	}
-	return resp
+func (a *Agent) jsJoinQueue(gameMode string) {
+	a.jsCall("matchmaking_join", map[string]interface{}{"game_mode": gameMode})
 }
 
 func (a *Agent) jsWaitForMatch() interface{} {
-	a.jsLog("Waiting for match.found...")
-	matchEnvelope, err := a.jsWaitForEvent("match.found", 60000)
-	if err != nil {
-		panic(a.VM.ToValue("Matchmaking timed out or failed: " + err.Error()))
-	}
-
-	// Safely extract match_id
-	env, ok := matchEnvelope.(map[string]interface{})
-	if !ok { panic(a.VM.ToValue("Invalid match envelope structure")) }
-	
-	data, ok := env["data"].(map[string]interface{})
-	if !ok { panic(a.VM.ToValue("Invalid match event data structure")) }
-
-	matchID, _ := data["match_id"].(string)
-	if matchID != "" {
-		a.jsSetContext("match_id", matchID)
-		a.jsLog("Match Found! ID: " + matchID)
-	}
-
-	return data
+	return a.jsJoinWaitMatch("1v1_PVP")
 }
 
+// --- WebSocket Control Methods ---
+
+func (a *Agent) jsWsConnect() {
+	a.Listener.Connect()
+}
+
+func (a *Agent) jsWsDisconnect() {
+	a.Listener.Disconnect()
+}
+
+func (a *Agent) jsWsStatus() interface{} {
+	conn, sid, subs := a.Listener.Status()
+	return map[string]interface{}{
+		"connected":     conn,
+		"socket_id":     sid,
+		"subscriptions": subs,
+	}
+}
+
+func (a *Agent) jsWsSubscribe(channel string) {
+	a.Listener.Subscribe(channel)
+}
+
+func (a *Agent) jsWsIsSubscribed(channel string) bool {
+	return a.Listener.IsSubscribed(channel)
+}
+
+// --- Callback System Methods ---
+
+func (a *Agent) jsOnEvent(eventName string, cb goja.Callable) {
+	a.cbMu.Lock()
+	defer a.cbMu.Unlock()
+	a.eventCallbacks[eventName] = append(a.eventCallbacks[eventName], cb)
+}
+
+func (a *Agent) jsProcessEvents() {
+	// We must drain the queue and execute callbacks
+	for {
+		select {
+		case ev := <-a.eventQueue:
+			a.cbMu.Lock()
+			callbacks := a.eventCallbacks[ev.Name]
+			a.cbMu.Unlock()
+
+			for _, cb := range callbacks {
+				// We don't want a panic in a callback to crash the agent
+				func() {
+					defer func() {
+						if r := recover(); r != nil {
+							a.jsLog(fmt.Sprintf("ERROR in callback for %s: %v", ev.Name, r))
+						}
+					}()
+					cb(goja.Undefined(), a.VM.ToValue(ev.Data))
+				}()
+			}
+		default:
+			return
+		}
+	}
+}
