@@ -11,6 +11,7 @@ import (
 	"github.com/ecumeurs/upsiloncli/internal/endpoint"
 	"github.com/ecumeurs/upsiloncli/internal/session"
 	"github.com/ecumeurs/upsiloncli/internal/ws"
+	"sync"
 )
 
 type Agent struct {
@@ -31,6 +32,14 @@ type Agent struct {
 	lastConsumedVersion uint64
 	currentTurnEntityID string
 	hasAttackedThisTurn bool
+	eventQueue          chan eventEnvelope
+	eventCallbacks      map[string][]goja.Callable
+	cbMu                sync.Mutex
+}
+
+type eventEnvelope struct {
+	Name string
+	Data interface{}
 }
 
 func NewAgent(id string, agentIdx, agentCount int, baseURL string, reg *endpoint.Registry, logger io.Writer, shared *SharedStore, quiet bool) *Agent {
@@ -41,18 +50,29 @@ func NewAgent(id string, agentIdx, agentCount int, baseURL string, reg *endpoint
 	client := api.NewClient(baseURL, sess, printer)
 	
 	agent := &Agent{
-		ID:         id,
-		AgentIndex: agentIdx,
-		AgentCount: agentCount,
-		Session:    sess,
-		Display:    printer,
-		Client:     client,
-		Listener:   ws.NewListener(client, sess, printer),
-		Registry:   reg,
-		VM:         goja.New(),
-		Logger:     logger,
-		Shared:     shared,
+		ID:             id,
+		AgentIndex:     agentIdx,
+		AgentCount:     agentCount,
+		Session:        sess,
+		Display:        printer,
+		Client:         client,
+		Listener:       ws.NewListener(client, sess, printer),
+		Registry:       reg,
+		VM:             goja.New(),
+		Logger:         logger,
+		Shared:         shared,
+		eventQueue:     make(chan eventEnvelope, 100),
+		eventCallbacks: make(map[string][]goja.Callable),
 	}
+
+	// Register WebSocket hook
+	agent.Listener.AddHook(func(name string, data interface{}) {
+		select {
+		case agent.eventQueue <- eventEnvelope{Name: name, Data: data}:
+		default:
+			// Buffer full, skip
+		}
+	})
 
 	// Use JSON tags for Go struct field names in JS (consistent with API keys)
 	agent.VM.SetFieldNameMapper(goja.TagFieldNameMapper("json", true))

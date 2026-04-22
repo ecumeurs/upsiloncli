@@ -13,20 +13,27 @@
 
 upsilon.log("Starting CR-15: Admin User Management Verification");
 
-try {
-    upsilon.log("Attempting Admin login...");
-    // Potential route: auth_admin_login
-    upsilon.call("auth_admin_login", {
-        account_name: "admin",
-        password: "AdminPassword123!"
-    });
-    
-    upsilon.log("✅ Admin access granted! Testing user anonymization...");
-    // (Anonymization logic here)
-} catch (e) {
-    // FAIL DIRECTLY AS NOT IMPLEMENTED as per user request
-    upsilon.log("❌ CR-15 FAILED: Admin Management or specific endpoints not implemented.");
-    upsilon.log("Expected: Role-based access and GDPR anonymization tools.");
-    upsilon.log("Actual: " + e.message);
-    upsilon.assert(false, "FEATURE NOT IMPLEMENTED: [[uc_admin_user_management]]");
-}
+// 1. Admin Login
+upsilon.log("Attempting Admin login...");
+upsilon.call("admin_login", {
+    account_name: "admin",
+    password: "AdminPassword123!" // Seeded value in .env.ci
+});
+
+upsilon.log("✅ Admin access granted! Fetching user registry...");
+
+// 2. Fetch User List
+const users = upsilon.call("admin_users", {});
+upsilon.assert(users.length > 0, "No users found in registry");
+
+// 3. Select a target for anonymization (e.g., the last one or a specific test user)
+const target = users[users.length - 1];
+upsilon.log(`Testing anonymization on: ${target.account_name}`);
+
+// 4. Trigger Anonymize
+const result = upsilon.call("admin_user_anonymize", {
+    account_name: target.account_name
+});
+
+upsilon.log(`✅ Anonymization result: ${result.message}`);
+upsilon.log("CR-15: ADMIN USER MANAGEMENT PASSED.");
