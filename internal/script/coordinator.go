@@ -14,12 +14,15 @@ import (
 	"github.com/ecumeurs/upsiloncli/internal/endpoint"
 )
 
-func RunFarm(baseURL string, reg *endpoint.Registry, scriptPaths []string, logDir string, timeoutSecs int, quiet bool) {
+func RunFarm(baseURL string, reg *endpoint.Registry, scriptPaths []string, logDir string, timeoutSecs int, quiet bool) bool {
 	var wg sync.WaitGroup
 	sharedStore := NewSharedStore()
 
 	var agents []*Agent
 	var agentsMu sync.Mutex
+	
+	var hasError bool
+	var errorMu sync.Mutex
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -131,6 +134,10 @@ func RunFarm(baseURL string, reg *endpoint.Registry, scriptPaths []string, logDi
 
 			_, err = agent.VM.RunString(string(scriptData))
 			if err != nil {
+				errorMu.Lock()
+				hasError = true
+				errorMu.Unlock()
+
 				ts := time.Now().UTC().Format("2006-01-02T15:04:05.000Z07:00")
 				if jsErr, ok := err.(*goja.Exception); ok {
 					fmt.Fprintf(logger, "[{%s}] [%s] JS Exception: %v\n", ts, agentID, jsErr.String())
@@ -147,4 +154,6 @@ func RunFarm(baseURL string, reg *endpoint.Registry, scriptPaths []string, logDi
 	wg.Wait()
 	ts := time.Now().UTC().Format("2006-01-02T15:04:05.000Z07:00")
 	fmt.Printf("[{%s}] All agents have finished execution and cleanup.\n", ts)
+	
+	return !hasError
 }
