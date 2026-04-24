@@ -1,7 +1,7 @@
 // upsiloncli/tests/scenarios/edge_movement_obstacle_collision.js
-// @spec-link [[mech_move_validation_move_validation_obstacle_collision]]
-// @spec-link [[mech_board_generation_terrain_obstacles]]
-// @spec-link [[entity_grid]]
+// @test-link [[mech_move_validation_move_validation_obstacle_collision]]
+// @test-link [[mech_board_generation_terrain_obstacles]]
+// @test-link [[entity_grid]]
 
 const agentIndex = upsilon.getAgentIndex();
 const botId = Math.floor(Math.random() * 10000) + "_" + agentIndex;

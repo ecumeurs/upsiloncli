@@ -1,6 +1,6 @@
 // upsiloncli/tests/scenarios/e2e_combat_turn_management.js
-// @spec-link [[uc_combat_turn]]
-// @spec-link [[mech_initiative]]
+// @test-link [[uc_combat_turn]]
+// @test-link [[mech_initiative]]
 
 const agentIndex = upsilon.getAgentIndex();
 const botId = Math.floor(Math.random() * 10000) + "_" + agentIndex;

@@ -1,6 +1,6 @@
 // upsiloncli/tests/scenarios/edge_auth_missing_token.js
-// @spec-link [[req_security_authorization]]
-// @spec-link [[mechanic_mech_frontend_auth_bridge]]
+// @test-link [[req_security_authorization]]
+// @test-link [[mechanic_mech_frontend_auth_bridge]]
 
 const agentIndex = upsilon.getAgentIndex();
 const botId = Math.floor(Math.random() * 10000) + "_" + agentIndex;

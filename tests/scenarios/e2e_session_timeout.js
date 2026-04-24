@@ -1,6 +1,6 @@
 // upsiloncli/tests/scenarios/e2e_session_timeout.js
-// @spec-link [[requirement_req_ui_session_timeout]]
-// @spec-link [[api_auth_login]]
+// @test-link [[requirement_req_ui_session_timeout]]
+// @test-link [[api_auth_login]]
 
 /**
  * SCENARIO: CR-16 Session Timeout Handling

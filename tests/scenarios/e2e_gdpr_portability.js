@@ -1,6 +1,6 @@
 // upsiloncli/tests/scenarios/e2e_gdpr_portability.js
-// @spec-link [[api_profile_export]]
-// @spec-link [[rule_gdpr_compliance]]
+// @test-link [[api_profile_export]]
+// @test-link [[rule_gdpr_compliance]]
 
 /**
  * SCENARIO: CR-14 GDPR Data Portability

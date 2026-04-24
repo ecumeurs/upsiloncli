@@ -1,6 +1,6 @@
 // upsiloncli/tests/scenarios/edge_api_malformed_json.js
-// @spec-link [[api_standard_envelope]]
-// @spec-link [[api_laravel_gateway]]
+// @test-link [[api_standard_envelope]]
+// @test-link [[api_laravel_gateway]]
 
 const agentIndex = upsilon.getAgentIndex();
 const botId = Math.floor(Math.random() * 10000) + "_" + agentIndex;

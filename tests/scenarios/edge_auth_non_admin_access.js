@@ -1,7 +1,7 @@
 // upsiloncli/tests/scenarios/edge_auth_non_admin_access.js
-// @spec-link [[uc_admin_login]]
-// @spec-link [[req_admin_experience]]
-// @spec-link [[rule_admin_access_restriction]]
+// @test-link [[uc_admin_login]]
+// @test-link [[req_admin_experience]]
+// @test-link [[rule_admin_access_restriction]]
 
 const agentIndex = upsilon.getAgentIndex();
 const botId = Math.floor(Math.random() * 10000) + "_" + agentIndex;

@@ -1,6 +1,6 @@
 // upsiloncli/tests/scenarios/edge_admin_delete_nonexistent.js
-// @spec-link [[uc_admin_user_management]]
-// @spec-link [[rule_gdpr_compliance]]
+// @test-link [[uc_admin_user_management]]
+// @test-link [[rule_gdpr_compliance]]
 
 const agentIndex = upsilon.getAgentIndex();
 const botId = Math.floor(Math.random() * 10000) + "_" + agentIndex;

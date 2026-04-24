@@ -1,6 +1,6 @@
 // upsiloncli/tests/scenarios/e2e_customer_onboarding.js
-// @spec-link [[uc_player_registration]]
-// @spec-link [[us_new_player_onboard]]
+// @test-link [[uc_player_registration]]
+// @test-link [[us_new_player_onboard]]
 
 const botId = Math.floor(Math.random() * 10000);
 const accountName = "onboard_bot_" + botId;
@@ -9,7 +9,7 @@ const password = "VerySecurePassword123!";
 upsilon.log("Starting CR-01: Complete New Player Onboarding for " + accountName);
 
 // 1. Player registers with valid credentials
-// @spec-link [[rule_password_policy]]
+// @test-link [[rule_password_policy]]
 const regResponse = upsilon.call("auth_register", {
     account_name: accountName,
     email: accountName + "@example.com",
@@ -24,7 +24,7 @@ upsilon.assert(regResponse.user != null, "Registration failed");
 upsilon.log("✅ Registration succeeded");
 
 // 2. System creates account with initial 3-character roster
-// @spec-link [[entity_player]]
+// @test-link [[entity_player]]
 const characters = regResponse.user.characters;
 upsilon.assertEquals(characters.length, 3, "Account should have exactly 3 characters");
 upsilon.log("✅ Account created with 3 characters");

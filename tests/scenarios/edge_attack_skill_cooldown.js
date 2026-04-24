@@ -1,7 +1,7 @@
 // upsiloncli/tests/scenarios/edge_attack_skill_cooldown.js
-// @spec-link [[mech_skill_validation_economic_cost_verification_cooldown_check]]
-// @spec-link [[mech_combat_attack_computation]]
-// @spec-link [[domain_skill_system]]
+// @test-link [[mech_skill_validation_economic_cost_verification_cooldown_check]]
+// @test-link [[mech_combat_attack_computation]]
+// @test-link [[domain_skill_system]]
 
 const agentIndex = upsilon.getAgentIndex();
 const botId = Math.floor(Math.random() * 10000) + "_" + agentIndex;

@@ -1,5 +1,5 @@
 // upsiloncli/tests/scenarios/e2e_password_policy.js
-// @spec-link [[rule_password_policy]]
+// @test-link [[rule_password_policy]]
 
 const botId = Math.floor(Math.random() * 10000);
 const accountName = "policy_bot_" + botId;

@@ -1,7 +1,7 @@
 // upsiloncli/tests/scenarios/edge_movement_jump_limitations.js
-// @spec-link [[mech_move_validation_move_validation_jump_limitations]]
-// @spec-link [[entity_grid]]
-// @spec-link [[mech_board_generation_terrain_obstacles]]
+// @test-link [[mech_move_validation_move_validation_jump_limitations]]
+// @test-link [[entity_grid]]
+// @test-link [[mech_board_generation_terrain_obstacles]]
 
 const agentIndex = upsilon.getAgentIndex();
 const botId = Math.floor(Math.random() * 10000) + "_" + agentIndex;

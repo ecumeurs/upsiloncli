@@ -1,6 +1,6 @@
 // upsiloncli/tests/scenarios/e2e_match_resolution_forfeit.js
-// @spec-link [[uc_match_resolution]]
-// @spec-link [[rule_forfeit_battle]]
+// @test-link [[uc_match_resolution]]
+// @test-link [[rule_forfeit_battle]]
 
 const botId = Math.floor(Math.random() * 10000);
 const accountName = "forfeit_bot_" + botId;

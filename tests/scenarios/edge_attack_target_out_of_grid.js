@@ -1,6 +1,6 @@
 // upsiloncli/tests/scenarios/edge_attack_target_out_of_grid.js
-// @spec-link [[mech_skill_validation_grid_boundaries_verification]]
-// @spec-link [[entity_grid]]
+// @test-link [[mech_skill_validation_grid_boundaries_verification]]
+// @test-link [[entity_grid]]
 
 const agentIndex = upsilon.getAgentIndex();
 const botId = Math.floor(Math.random() * 10000) + "_" + agentIndex;

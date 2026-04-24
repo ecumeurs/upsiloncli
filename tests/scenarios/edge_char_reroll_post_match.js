@@ -1,6 +1,6 @@
 // upsiloncli/tests/scenarios/edge_char_reroll_post_match.js
-// @spec-link [[mech_character_reroll_limit]]
-// @spec-link [[us_character_reroll]]
+// @test-link [[mech_character_reroll_limit]]
+// @test-link [[us_character_reroll]]
 
 const agentIndex = upsilon.getAgentIndex();
 const botId = Math.floor(Math.random() * 10000) + "_" + agentIndex;

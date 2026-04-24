@@ -1,6 +1,6 @@
 // upsiloncli/tests/scenarios/edge_match_leave_not_queued.js
-// @spec-link [[api_matchmaking]]
-// @spec-link [[usecase_api_flow_matchmaking]]
+// @test-link [[api_matchmaking]]
+// @test-link [[usecase_api_flow_matchmaking]]
 
 const agentIndex = upsilon.getAgentIndex();
 const botId = Math.floor(Math.random() * 10000) + "_" + agentIndex;

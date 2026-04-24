@@ -1,6 +1,6 @@
 // upsiloncli/tests/scenarios/edge_attack_target_invalid_cell.js
-// @spec-link [[mech_combat_attack_computation]]
-// @spec-link [[entity_grid]]
+// @test-link [[mech_combat_attack_computation]]
+// @test-link [[entity_grid]]
 
 const agentIndex = upsilon.getAgentIndex();
 const botId = Math.floor(Math.random() * 10000) + "_" + agentIndex;

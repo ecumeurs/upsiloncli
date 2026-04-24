@@ -1,6 +1,6 @@
 // upsiloncli/tests/scenarios/e2e_character_reroll.js
-// @spec-link [[us_character_reroll]]
-// @spec-link [[mech_character_reroll_limit]]
+// @test-link [[us_character_reroll]]
+// @test-link [[mech_character_reroll_limit]]
 
 const botId = Math.floor(Math.random() * 10000);
 const accountName = "reroll_bot_" + botId;

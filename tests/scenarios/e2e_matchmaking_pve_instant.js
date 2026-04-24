@@ -1,6 +1,6 @@
 // upsiloncli/tests/scenarios/e2e_matchmaking_pve_instant.js
-// @spec-link [[uc_matchmaking]]
-// @spec-link [[us_queue_selection]]
+// @test-link [[uc_matchmaking]]
+// @test-link [[us_queue_selection]]
 
 const botId = Math.floor(Math.random() * 10000);
 const accountName = "pve_bot_" + botId;

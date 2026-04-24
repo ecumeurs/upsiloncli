@@ -1,6 +1,6 @@
 // upsiloncli/tests/scenarios/edge_match_action_after_end.js
-// @spec-link [[uc_match_resolution]]
-// @spec-link [[mech_action_economy]]
+// @test-link [[uc_match_resolution]]
+// @test-link [[mech_action_economy]]
 
 const agentCount = 2;
 const agentIndex = upsilon.getAgentIndex();

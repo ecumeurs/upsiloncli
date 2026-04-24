@@ -1,6 +1,6 @@
 // upsiloncli/tests/scenarios/e2e_customer_login.js
-// @spec-link [[uc_player_login]]
-// @spec-link [[api_auth_login]]
+// @test-link [[uc_player_login]]
+// @test-link [[api_auth_login]]
 
 const botId = Math.floor(Math.random() * 10000);
 const accountName = "login_bot_" + botId;

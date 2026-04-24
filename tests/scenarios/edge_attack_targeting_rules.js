@@ -1,7 +1,7 @@
 // upsiloncli/tests/scenarios/edge_attack_targeting_rules.js
-// @spec-link [[mech_skill_validation_entity_targeting_rules_verification]]
-// @spec-link [[rule_friendly_fire]]
-// @spec-link [[entity_character]]
+// @test-link [[mech_skill_validation_entity_targeting_rules_verification]]
+// @test-link [[rule_friendly_fire]]
+// @test-link [[entity_character]]
 
 const agentCount = 4;
 const agentIndex = upsilon.getAgentIndex();

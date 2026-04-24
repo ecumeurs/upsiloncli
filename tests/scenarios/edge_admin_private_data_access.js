@@ -1,7 +1,7 @@
 // upsiloncli/tests/scenarios/edge_admin_private_data_access.js
-// @spec-link [[rule_admin_access_restriction]]
-// @spec-link [[uc_admin_user_management]]
-// @spec-link [[rule_gdpr_compliance]]
+// @test-link [[rule_admin_access_restriction]]
+// @test-link [[uc_admin_user_management]]
+// @test-link [[rule_gdpr_compliance]]
 
 const agentIndex = upsilon.getAgentIndex();
 const botId = Math.floor(Math.random() * 10000) + "_" + agentIndex;

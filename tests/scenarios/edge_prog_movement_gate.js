@@ -1,7 +1,7 @@
 // upsiloncli/tests/scenarios/edge_prog_movement_gate.js
-// @spec-link [[rule_progression]]
-// @spec-link [[us_win_progression_movement_locked]]
-// @spec-link [[us_win_progression]]
+// @test-link [[rule_progression]]
+// @test-link [[us_win_progression_movement_locked]]
+// @test-link [[us_win_progression]]
 
 const agentIndex = upsilon.getAgentIndex();
 const botId = Math.floor(Math.random() * 10000) + "_" + agentIndex;

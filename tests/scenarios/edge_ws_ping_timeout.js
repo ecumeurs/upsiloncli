@@ -1,6 +1,6 @@
 // upsiloncli/tests/scenarios/edge_ws_ping_timeout.js
-// @spec-link [[api_websocket]]
-// @spec-link [[req_logging_traceability]]
+// @test-link [[api_websocket]]
+// @test-link [[req_logging_traceability]]
 
 const agentIndex = upsilon.getAgentIndex();
 const botId = Math.floor(Math.random() * 10000) + "_" + agentIndex;

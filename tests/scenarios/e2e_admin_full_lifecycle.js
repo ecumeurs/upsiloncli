@@ -1,7 +1,7 @@
 // upsiloncli/tests/scenarios/e2e_admin_full_lifecycle.js
-// @spec-link [[uc_admin_login]]
-// @spec-link [[ui_admin_dashboard]]
-// @spec-link [[uc_admin_user_management]]
+// @test-link [[uc_admin_login]]
+// @test-link [[ui_admin_dashboard]]
+// @test-link [[uc_admin_user_management]]
 
 /**
  * SCENARIO: Administrative Lifecycle Verification

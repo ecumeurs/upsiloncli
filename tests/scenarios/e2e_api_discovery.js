@@ -1,6 +1,6 @@
 // upsiloncli/tests/scenarios/e2e_api_discovery.js
-// @spec-link [[requirement_customer_api_first]]
-// @spec-link [[api_help_endpoint]]
+// @test-link [[requirement_customer_api_first]]
+// @test-link [[api_help_endpoint]]
 
 /**
  * SCENARIO: CR-17 API Self-Discovery

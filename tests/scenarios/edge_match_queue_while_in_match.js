@@ -1,7 +1,7 @@
 // upsiloncli/tests/scenarios/edge_match_queue_while_in_match.js
-// @spec-link [[rule_matchmaking_single_queue]]
-// @spec-link [[api_matchmaking]]
-// @spec-link [[uc_matchmaking]]
+// @test-link [[rule_matchmaking_single_queue]]
+// @test-link [[api_matchmaking]]
+// @test-link [[uc_matchmaking]]
 
 const agentCount = 2;
 const agentIndex = upsilon.getAgentIndex();

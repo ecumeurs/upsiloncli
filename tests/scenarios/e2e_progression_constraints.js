@@ -1,6 +1,6 @@
 // upsiloncli/tests/scenarios/e2e_progression_constraints.js
-// @spec-link [[rule_progression]]
-// @spec-link [[uc_progression_stat_allocation]]
+// @test-link [[rule_progression]]
+// @test-link [[uc_progression_stat_allocation]]
 
 const agentIndex = upsilon.getAgentIndex();
 const botId = Math.floor(Math.random() * 10000) + "_" + agentIndex;

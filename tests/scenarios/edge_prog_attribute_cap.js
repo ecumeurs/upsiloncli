@@ -1,6 +1,6 @@
 // upsiloncli/tests/scenarios/edge_prog_attribute_cap.js
-// @spec-link [[rule_progression]]
-// @spec-link [[entity_character]]
+// @test-link [[rule_progression]]
+// @test-link [[entity_character]]
 
 const agentIndex = upsilon.getAgentIndex();
 const botId = Math.floor(Math.random() * 10000) + "_" + agentIndex;
