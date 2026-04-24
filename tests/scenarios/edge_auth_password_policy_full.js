@@ -1,7 +1,7 @@
 // upsiloncli/tests/scenarios/edge_auth_password_policy_full.js
-// @spec-link [[rule_password_policy]]
-// @spec-link [[req_security]]
-// @spec-link [[uc_player_registration]]
+// @test-link [[rule_password_policy]]
+// @test-link [[req_security]]
+// @test-link [[uc_player_registration]]
 
 const botId = Math.floor(Math.random() * 10000);
 const accountName = "password_edge_bot_" + botId;

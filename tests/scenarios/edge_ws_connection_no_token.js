@@ -1,6 +1,6 @@
 // upsiloncli/tests/scenarios/edge_ws_connection_no_token.js
-// @spec-link [[api_websocket]]
-// @spec-link [[req_security_authorization]]
+// @test-link [[api_websocket]]
+// @test-link [[req_security_authorization]]
 
 const agentIndex = upsilon.getAgentIndex();
 const botId = Math.floor(Math.random() * 10000) + "_" + agentIndex;

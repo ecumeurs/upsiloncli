@@ -1,6 +1,6 @@
 // upsiloncli/tests/scenarios/edge_leaderboard_over_pagination.js
-// @spec-link [[api_leaderboard]]
-// @spec-link [[us_leaderboard_view_sort_leaderboard]]
+// @test-link [[api_leaderboard]]
+// @test-link [[us_leaderboard_view_sort_leaderboard]]
 
 const agentIndex = upsilon.getAgentIndex();
 const botId = Math.floor(Math.random() * 10000) + "_" + agentIndex;

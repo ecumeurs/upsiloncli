@@ -1,6 +1,6 @@
 // upsiloncli/tests/scenarios/edge_auth_session_timeout.js
-// @spec-link [[requirement_req_ui_session_timeout]]
-// @spec-link [[req_security_token_ttl]]
+// @test-link [[requirement_req_ui_session_timeout]]
+// @test-link [[req_security_token_ttl]]
 
 const agentIndex = upsilon.getAgentIndex();
 const botId = Math.floor(Math.random() * 10000) + "_" + agentIndex;

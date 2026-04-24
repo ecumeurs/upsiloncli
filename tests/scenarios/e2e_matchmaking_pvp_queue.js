@@ -1,6 +1,6 @@
 // upsiloncli/tests/scenarios/e2e_matchmaking_pvp_queue.js
-// @spec-link [[uc_matchmaking]]
-// @spec-link [[rule_matchmaking_single_queue]]
+// @test-link [[uc_matchmaking]]
+// @test-link [[rule_matchmaking_single_queue]]
 
 const agentIndex = upsilon.getAgentIndex();
 const botId = Math.floor(Math.random() * 10000) + "_" + agentIndex;

@@ -1,7 +1,7 @@
 // upsiloncli/tests/scenarios/edge_match_invalid_game_mode.js
-// @spec-link [[api_matchmaking]]
-// @spec-link [[req_matchmaking_matchmaking_queue]]
-// @spec-link [[spec_match_format]]
+// @test-link [[api_matchmaking]]
+// @test-link [[req_matchmaking_matchmaking_queue]]
+// @test-link [[spec_match_format]]
 
 const agentIndex = upsilon.getAgentIndex();
 const botId = Math.floor(Math.random() * 10000) + "_" + agentIndex;

@@ -1,7 +1,7 @@
 // upsiloncli/tests/scenarios/edge_movement_path_too_long.js
-// @spec-link [[mech_move_validation_move_validation_path_length_credits]]
-// @spec-link [[mech_action_economy]]
-// @spec-link [[entity_character]]
+// @test-link [[mech_move_validation_move_validation_path_length_credits]]
+// @test-link [[mech_action_economy]]
+// @test-link [[entity_character]]
 
 const agentIndex = upsilon.getAgentIndex();
 const botId = Math.floor(Math.random() * 10000) + "_" + agentIndex;

@@ -1,6 +1,6 @@
 // upsiloncli/tests/scenarios/e2e_leaderboard_viewing.js
-// @spec-link [[us_leaderboard_view]]
-// @spec-link [[api_leaderboard]]
+// @test-link [[us_leaderboard_view]]
+// @test-link [[api_leaderboard]]
 
 const botId = Math.floor(Math.random() * 10000);
 const accountName = "leader_bot_" + botId;

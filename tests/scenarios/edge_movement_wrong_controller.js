@@ -1,6 +1,6 @@
 // upsiloncli/tests/scenarios/edge_movement_wrong_controller.js
-// @spec-link [[mech_move_validation_move_validation_controller_mismatch]]
-// @spec-link [[entity_player]]
+// @test-link [[mech_move_validation_move_validation_controller_mismatch]]
+// @test-link [[entity_player]]
 
 const agentCount = 2;
 const agentIndex = upsilon.getAgentIndex();

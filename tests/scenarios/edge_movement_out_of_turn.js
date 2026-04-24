@@ -1,7 +1,7 @@
 // upsiloncli/tests/scenarios/edge_movement_out_of_turn.js
-// @spec-link [[mech_move_validation_move_validation_turn_mismatch]]
-// @spec-link [[mech_initiative]]
-// @spec-link [[mech_action_economy]]
+// @test-link [[mech_move_validation_move_validation_turn_mismatch]]
+// @test-link [[mech_initiative]]
+// @test-link [[mech_action_economy]]
 
 const agentCount = 2;
 const agentIndex = upsilon.getAgentIndex();

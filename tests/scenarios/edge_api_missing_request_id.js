@@ -1,7 +1,7 @@
 // upsiloncli/tests/scenarios/edge_api_missing_request_id.js
-// @spec-link [[api_request_id]]
-// @spec-link [[api_standard_envelope]]
-// @spec-link [[req_logging_traceability]]
+// @test-link [[api_request_id]]
+// @test-link [[api_standard_envelope]]
+// @test-link [[req_logging_traceability]]
 
 const agentIndex = upsilon.getAgentIndex();
 const botId = Math.floor(Math.random() * 10000) + "_" + agentIndex;

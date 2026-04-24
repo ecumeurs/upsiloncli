@@ -1,6 +1,6 @@
 // upsiloncli/tests/scenarios/edge_api_invalid_uuid.js
-// @spec-link [[api_standard_envelope]]
-// @spec-link [[entity_character]]
+// @test-link [[api_standard_envelope]]
+// @test-link [[entity_character]]
 
 const agentIndex = upsilon.getAgentIndex();
 const botId = Math.floor(Math.random() * 10000) + "_" + agentIndex;

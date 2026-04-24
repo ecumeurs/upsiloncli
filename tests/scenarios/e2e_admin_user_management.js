@@ -1,6 +1,6 @@
 // upsiloncli/tests/scenarios/e2e_admin_user_management.js
-// @spec-link [[uc_admin_user_management]]
-// @spec-link [[rule_admin_access_restriction]]
+// @test-link [[uc_admin_user_management]]
+// @test-link [[rule_admin_access_restriction]]
 
 /**
  * SCENARIO: CR-15 Admin User Management

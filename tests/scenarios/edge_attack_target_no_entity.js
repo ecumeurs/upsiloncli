@@ -1,6 +1,6 @@
 // upsiloncli/tests/scenarios/edge_attack_target_no_entity.js
-// @spec-link [[mech_combat_attack_computation]]
-// @spec-link [[entity_character]]
+// @test-link [[mech_combat_attack_computation]]
+// @test-link [[entity_character]]
 
 const agentIndex = upsilon.getAgentIndex();
 const botId = Math.floor(Math.random() * 10000) + "_" + agentIndex;

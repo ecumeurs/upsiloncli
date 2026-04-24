@@ -1,6 +1,6 @@
 // upsiloncli/tests/scenarios/edge_attack_already_acted.js
-// @spec-link [[mech_skill_validation_action_state_verification]]
-// @spec-link [[mech_action_economy]]
+// @test-link [[mech_skill_validation_action_state_verification]]
+// @test-link [[mech_action_economy]]
 
 const agentIndex = upsilon.getAgentIndex();
 const botId = Math.floor(Math.random() * 10000) + "_" + agentIndex;

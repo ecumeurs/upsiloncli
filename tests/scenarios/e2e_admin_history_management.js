@@ -1,6 +1,6 @@
 // upsiloncli/tests/scenarios/e2e_admin_history_management.js
-// @spec-link [[uc_admin_history_management]]
-// @spec-link [[entity_game_match]]
+// @test-link [[uc_admin_history_management]]
+// @test-link [[entity_game_match]]
 
 /**
  * SCENARIO: Match History & Purge Maintenance (ISS-051, ISS-053)

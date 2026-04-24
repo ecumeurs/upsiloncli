@@ -1,7 +1,7 @@
 // upsiloncli/tests/scenarios/edge_attack_out_of_turn.js
-// @spec-link [[mech_skill_validation_turn_controller_identity_verification]]
-// @spec-link [[mech_initiative]]
-// @spec-link [[mech_action_economy]]
+// @test-link [[mech_skill_validation_turn_controller_identity_verification]]
+// @test-link [[mech_initiative]]
+// @test-link [[mech_action_economy]]
 
 const agentCount = 2;
 const agentIndex = upsilon.getAgentIndex();

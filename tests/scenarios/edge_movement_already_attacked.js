@@ -1,7 +1,7 @@
 // upsiloncli/tests/scenarios/edge_movement_already_attacked.js
-// @spec-link [[mech_move_validation_move_validation_already_moved]]
-// @spec-link [[mech_action_economy]]
-// @spec-link [[mech_action_economy_action_cost_rules]]
+// @test-link [[mech_move_validation_move_validation_already_moved]]
+// @test-link [[mech_action_economy]]
+// @test-link [[mech_action_economy_action_cost_rules]]
 
 const agentIndex = upsilon.getAgentIndex();
 const botId = Math.floor(Math.random() * 10000) + "_" + agentIndex;

@@ -1,7 +1,7 @@
 // upsiloncli/tests/scenarios/edge_match_queue_while_queued.js
-// @spec-link [[rule_matchmaking_single_queue]]
-// @spec-link [[api_matchmaking]]
-// @spec-link [[usecase_api_flow_matchmaking]]
+// @test-link [[rule_matchmaking_single_queue]]
+// @test-link [[api_matchmaking]]
+// @test-link [[usecase_api_flow_matchmaking]]
 
 const botId = Math.floor(Math.random() * 10000);
 const accountName = "queueedge_bot_" + botId;

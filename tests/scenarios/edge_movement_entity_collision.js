@@ -1,6 +1,6 @@
 // upsiloncli/tests/scenarios/edge_movement_entity_collision.js
-// @spec-link [[mech_move_validation_move_validation_entity_collision]]
-// @spec-link [[entity_character]]
+// @test-link [[mech_move_validation_move_validation_entity_collision]]
+// @test-link [[entity_character]]
 
 const agentCount = 2;
 const agentIndex = upsilon.getAgentIndex();

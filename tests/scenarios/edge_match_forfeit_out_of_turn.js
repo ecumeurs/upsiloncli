@@ -1,7 +1,7 @@
 // upsiloncli/tests/scenarios/edge_match_forfeit_out_of_turn.js
-// @spec-link [[rule_forfeit_battle]]
-// @spec-link [[uc_match_resolution]]
-// @spec-link [[mech_initiative]]
+// @test-link [[rule_forfeit_battle]]
+// @test-link [[uc_match_resolution]]
+// @test-link [[mech_initiative]]
 
 const agentCount = 2;
 const agentIndex = upsilon.getAgentIndex();

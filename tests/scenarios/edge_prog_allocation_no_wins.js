@@ -1,7 +1,7 @@
 // upsiloncli/tests/scenarios/edge_prog_allocation_no_wins.js
-// @spec-link [[rule_progression]]
-// @spec-link [[uc_progression_stat_allocation]]
-// @spec-link [[us_win_progression]]
+// @test-link [[rule_progression]]
+// @test-link [[uc_progression_stat_allocation]]
+// @test-link [[us_win_progression]]
 
 const agentIndex = upsilon.getAgentIndex();
 const botId = Math.floor(Math.random() * 10000) + "_" + agentIndex;

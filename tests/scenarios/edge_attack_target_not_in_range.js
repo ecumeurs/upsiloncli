@@ -1,7 +1,7 @@
 // upsiloncli/tests/scenarios/edge_attack_target_not_in_range.js
-// @spec-link [[mech_skill_validation_range_limit_verification]]
-// @spec-link [[mech_combat_attack_computation]]
-// @spec-link [[entity_character]]
+// @test-link [[mech_skill_validation_range_limit_verification]]
+// @test-link [[mech_combat_attack_computation]]
+// @test-link [[entity_character]]
 
 const agentIndex = upsilon.getAgentIndex();
 const botId = Math.floor(Math.random() * 10000) + "_" + agentIndex;

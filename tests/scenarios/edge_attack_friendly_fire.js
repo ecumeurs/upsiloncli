@@ -1,7 +1,7 @@
 // upsiloncli/tests/scenarios/edge_attack_friendly_fire.js
-// @spec-link [[rule_friendly_fire]]
-// @spec-link [[rule_friendly_fire_team_validation]]
-// @spec-link [[rule_friendly_fire_match_type]]
+// @test-link [[rule_friendly_fire]]
+// @test-link [[rule_friendly_fire_team_validation]]
+// @test-link [[rule_friendly_fire_match_type]]
 
 const agentIndex = upsilon.getAgentIndex();
 const botId = Math.floor(Math.random() * 10000) + "_" + agentIndex;

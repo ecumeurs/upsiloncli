@@ -1,6 +1,6 @@
 // upsiloncli/tests/scenarios/edge_attack_wrong_controller.js
-// @spec-link [[mech_skill_validation_turn_controller_identity_verification]]
-// @spec-link [[entity_player]]
+// @test-link [[mech_skill_validation_turn_controller_identity_verification]]
+// @test-link [[entity_player]]
 
 const agentCount = 2;
 const agentIndex = upsilon.getAgentIndex();

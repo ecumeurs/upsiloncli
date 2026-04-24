@@ -1,6 +1,6 @@
 // upsiloncli/tests/scenarios/edge_ws_wrong_channel.js
-// @spec-link [[api_websocket]]
-// @spec-link [[api_websocket_arena_updates]]
+// @test-link [[api_websocket]]
+// @test-link [[api_websocket_arena_updates]]
 
 const agentIndex = upsilon.getAgentIndex();
 const botId = Math.floor(Math.random() * 10000) + "_" + agentIndex;

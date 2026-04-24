@@ -1,6 +1,6 @@
 // upsiloncli/tests/scenarios/edge_api_5xx_error_handling.js
-// @spec-link [[mechanic_mech_frontend_auth_bridge]]
-// @spec-link [[api_standard_envelope]]
+// @test-link [[mechanic_mech_frontend_auth_bridge]]
+// @test-link [[api_standard_envelope]]
 
 const agentIndex = upsilon.getAgentIndex();
 const botId = Math.floor(Math.random() * 10000) + "_" + agentIndex;

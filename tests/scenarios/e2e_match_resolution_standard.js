@@ -1,6 +1,6 @@
 // upsiloncli/tests/scenarios/e2e_match_resolution_standard.js
-// @spec-link [[uc_match_resolution]]
-// @spec-link [[us_win_progression]]
+// @test-link [[uc_match_resolution]]
+// @test-link [[us_win_progression]]
 
 const agentIndex = upsilon.getAgentIndex();
 const botId = Math.floor(Math.random() * 10000) + "_" + agentIndex;

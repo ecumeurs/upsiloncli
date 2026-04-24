@@ -1,6 +1,6 @@
 // upsiloncli/tests/scenarios/e2e_friendly_fire_prevention.js
-// @spec-link [[rule_friendly_fire]]
-// @spec-link [[rule_friendly_fire_team_validation]]
+// @test-link [[rule_friendly_fire]]
+// @test-link [[rule_friendly_fire_team_validation]]
 
 const agentIndex = upsilon.getAgentIndex();
 const botId = Math.floor(Math.random() * 10000) + "_" + agentIndex;
