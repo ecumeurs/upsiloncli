@@ -511,7 +511,7 @@ func (e *GameAction) Params() []Param {
 	return []Param{
 		{Name: "id", Hint: "match UUID", Required: true, ContextKey: "match_id"},
 		{Name: "entity_id", Hint: "acting entity UUID", Required: true, ContextKey: "current_entity_id"},
-		{Name: "type", Hint: "move|attack|pass|forfeit", Required: true},
+		{Name: "type", Hint: "move|attack|pass", Required: true},
 		{Name: "target_coords", Hint: "x,y coordinates (e.g. 3,2;4,2) semicolon-separated path"},
 	}
 }
