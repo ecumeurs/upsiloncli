@@ -24,10 +24,11 @@ upsilon.log("✅ Admin access granted! Fetching user registry...");
 
 // 2. Fetch User List
 const users = upsilon.call("admin_users", {});
-upsilon.assert(users.length > 0, "No users found in registry");
+upsilon.assert(users.items != null, "Items missing from user response");
+upsilon.assert(users.items.length > 0, "No users found in registry");
 
 // 3. Select a target for anonymization (e.g., the last one or a specific test user)
-const target = users[users.length - 1];
+const target = users.items[users.items.length - 1];
 upsilon.log(`Testing anonymization on: ${target.account_name}`);
 
 // 4. Trigger Anonymize

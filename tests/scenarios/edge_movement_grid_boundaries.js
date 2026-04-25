@@ -21,8 +21,8 @@ if (!board) {
 
 const myChar = upsilon.currentCharacter();
 const startPos = myChar.position;
-const gridWidth = board.grid[0].length;
-const gridHeight = board.grid.length;
+const gridWidth = board.grid.width;
+const gridHeight = board.grid.height;
 
 upsilon.log(`[Bot-${agentIndex}] Character at: ${startPos.x},${startPos.y}, Grid: ${gridWidth}x${gridHeight}`);
 
@@ -59,7 +59,7 @@ try {
 
 // 5. Verify position unchanged
 const updatedBoard = upsilon.call("game_state", { id: matchData.match_id });
-const updatedChar = updatedBoard.data.players[0].entities.find(e => e.id === myChar.id);
+const updatedChar = updatedBoard.game_state.players[0].entities.find(e => e.id === myChar.id);
 upsilon.assertEquals(updatedChar.position.x, startPos.x, "Character X position changed after failed moves");
 upsilon.assertEquals(updatedChar.position.y, startPos.y, "Character Y position changed after failed moves");
 upsilon.log(`[Bot-${agentIndex}] ✅ Position unchanged (${updatedChar.position.x},${updatedChar.position.y})`);

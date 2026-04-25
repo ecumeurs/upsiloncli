@@ -54,11 +54,15 @@ if (enemyChars.length > 0) {
         });
         upsilon.assert(false, "ERROR: Action after match end was accepted!");
     } catch (e) {
-        upsilon.log(`[Bot-${agentIndex}] ✅ Action after match end properly rejected: ${e.message}`);
-        // Error should indicate match is finished
+        upsilon.log(`[Bot-${agentIndex}] ✅ Action after match end properly rejected: ${e.message} (key=${e.error_key})`);
+        // Error should reference the match state. We accept either an explicit
+        // wording or an arena.notfound key if the arena was torn down after the
+        // forfeit finished processing.
+        const msg = (e.message || "").toLowerCase();
         upsilon.assert(
-            e.message.toLowerCase().includes("match") || e.message.toLowerCase().includes("finished") || e.message.toLowerCase().includes("ended"),
-            "Error message should mention match state"
+            msg.includes("match") || msg.includes("finished") || msg.includes("ended") ||
+            msg.includes("arena not found") || e.error_key === "arena.notfound",
+            "Error message should mention match/arena state"
         );
     }
 }
@@ -79,10 +83,10 @@ try {
 
 // 7. Verify match state shows finished
 const matchState = upsilon.call("game_state", { id: sharedMatchId });
-if (matchState.data && matchState.data.winner_team_id !== null) {
-    upsilon.log(`[Bot-${agentIndex}] ✅ Match state shows winner: team ${matchState.data.winner_team_id}`);
+if (matchState && matchState.winner_team_id != null) {
+    upsilon.log(`[Bot-${agentIndex}] ✅ Match state shows winner: team ${matchState.winner_team_id}`);
 } else {
-    upsilon.log(`[Bot-${agentIndex}] Match state: ${matchState.data ? 'loaded' : 'error'}`);
+    upsilon.log(`[Bot-${agentIndex}] Match state: ${matchState ? 'loaded' : 'error'}`);
 }
 
 upsilon.log(`[Bot-${agentIndex}] EC-36: ACTION AFTER MATCH END PASSED.`);

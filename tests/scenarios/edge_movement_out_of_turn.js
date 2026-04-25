@@ -11,63 +11,45 @@ const password = "VerySecurePassword123!";
 
 upsilon.log(`[Bot-${agentIndex}] Starting EC-06: Movement Out of Turn`);
 
-// 1. Setup
 upsilon.bootstrapBot(accountName, password);
 const matchData = upsilon.joinWaitMatch("1v1_PVP");
 
-// Share match ID
-if (agentIndex === 0) {
-    upsilon.setShared("match_id", matchData.match_id);
-}
+if (agentIndex === 0) { upsilon.setShared("match_id", matchData.match_id); }
 upsilon.syncGroup("moveoot_ready", agentCount);
-
 const sharedMatchId = upsilon.getShared("match_id");
 
-// 2. Wait for first turn
-const board = upsilon.waitNextTurn();
-if (!board) {
-    upsilon.assert(false, "ERROR: Match ended unexpectedly");
-}
+const myEntity = upsilon.myCharacters()[0];
+let rejected = false;
+let attempts = 0;
 
-const myChar = upsilon.currentCharacter();
-const isMyTurn = board.current_entity_id === myChar.id;
-upsilon.log(`[Bot-${agentIndex}] My character: ${myChar.id}, Current turn: ${board.current_entity_id}, My turn: ${isMyTurn}`);
+while (!rejected && attempts < 30) {
+    attempts++;
+    upsilon.sleep(200);
+    const state = upsilon.call("game_state", { id: sharedMatchId });
+    const bs = state.game_state;
+    if (!bs || !bs.current_entity_id) continue;
 
-// 3. If NOT my turn, attempt to move (should fail)
-if (!isMyTurn) {
-    upsilon.log(`[Bot-${agentIndex}] Attempting move out of turn...`);
+    if (bs.current_entity_id === myEntity.id) {
+        // Our turn: pass so opponent gets initiative back.
+        upsilon.call("game_action", { id: sharedMatchId, type: "pass", entity_id: myEntity.id });
+        continue;
+    }
+
+    // Not our turn: attempt the illegal move.
     try {
         upsilon.call("game_action", {
             id: sharedMatchId,
             type: "move",
-            entity_id: myChar.id,
-            target_coords: [{ x: myChar.position.x + 1, y: myChar.position.y }]
+            entity_id: myEntity.id,
+            target_coords: [{ x: myEntity.position.x + 1, y: myEntity.position.y }]
         });
-        upsilon.assert(false, "ERROR: Move out of turn was accepted!");
+        upsilon.assert(false, "ERROR: Move out of turn accepted");
     } catch (e) {
-        upsilon.log(`[Bot-${agentIndex}] ✅ Move out of turn properly rejected: ${e.message}`);
-        upsilon.assertEquals(e.error_key, "entity.turn.missmatch", "Wrong error key for out of turn move");
-    }
-} else {
-    upsilon.log(`[Bot-${agentIndex}] It's my turn, waiting for opponent to test out-of-turn move...`);
-    upsilon.sleep(3000);
-}
-
-// 4. When it IS my turn, move should succeed
-const myBoard = upsilon.waitNextTurn();
-if (myBoard && myBoard.current_entity_id === myChar.id) {
-    upsilon.log(`[Bot-${agentIndex}] Attempting valid move on my turn...`);
-    try {
-        upsilon.call("game_action", {
-            id: sharedMatchId,
-            type: "move",
-            entity_id: myChar.id,
-            target_coords: [{ x: myChar.position.x + 1, y: myChar.position.y }]
-        });
-        upsilon.log(`[Bot-${agentIndex}] ✅ Valid move on my turn succeeded`);
-    } catch (e) {
-        upsilon.log(`[Bot-${agentIndex}] Valid move failed (may be expected): ${e.message}`);
+        upsilon.log(`[Bot-${agentIndex}] ✅ Out-of-turn move rejected: ${e.message} (key=${e.error_key})`);
+        upsilon.assertEquals(e.error_key, "entity.turn.missmatch", "Expected entity.turn.missmatch");
+        rejected = true;
     }
 }
 
+upsilon.assert(rejected, "Never observed opponent's turn to attempt out-of-turn move");
 upsilon.log(`[Bot-${agentIndex}] EC-06: MOVEMENT OUT OF TURN PASSED.`);

@@ -9,39 +9,55 @@ const password = "VerySecurePassword123!";
 
 upsilon.log(`[Bot-${agentIndex}] Starting CR-07: Friendly Fire Prevention`);
 
-// 1. Setup (2v2 match with 2 bots on same team)
+// 4 bots: 2v2 PvP. Once everyone is in we publish entity ids and move toward
+// our team-mate so we can attempt the illegal attack at point-blank range.
 upsilon.bootstrapBot(accountName, password);
 const matchData = upsilon.joinWaitMatch("2v2_PVP");
-
-// Share identity to allow targeted FF attempt
 upsilon.setShared(`bot_char_id_${agentIndex}`, upsilon.myCharacters()[0].id);
-upsilon.syncGroup("ident_exchange", 2);
+upsilon.syncGroup("ident_exchange", 4);
 
-// Only Bots 0 and 1 are part of this script execution (farm bot_0 bot_1)
-// We assume they are matched on same team or we wait until one can see the other
-const board = upsilon.waitNextTurn();
-if (board) {
-    const myChar = upsilon.currentCharacter();
-    const allyChars = upsilon.myAlliesCharacters();
-    
-    if (allyChars.length > 0) {
-        const targetAlly = allyChars[0];
-        upsilon.log(`[Bot-${agentIndex}] Attempting illegal Friendly Fire on ${targetAlly.name}...`);
-        
+let success = false;
+let rounds = 0;
+const MAX_ROUNDS = 60;
+
+while (rounds < MAX_ROUNDS && !success) {
+    rounds++;
+    const board = upsilon.waitNextTurn();
+    if (!board) break;
+
+    const me = upsilon.currentCharacter();
+    const allies = upsilon.myAlliesCharacters().filter(a => a.hp > 0);
+    if (allies.length === 0) {
+        // No ally visible (e.g. solo team because the match started 1v1 fallback);
+        // pass and exit cleanly.
+        upsilon.call("game_action", { id: matchData.match_id, type: "pass", entity_id: me.id });
+        continue;
+    }
+
+    const ally = allies[0];
+    const adjacent = (Math.abs(me.position.x - ally.position.x) + Math.abs(me.position.y - ally.position.y)) <= 1;
+
+    if (adjacent) {
+        upsilon.log(`[Bot-${agentIndex}] Round ${rounds}: attempting illegal FF on ${ally.name}...`);
         try {
             upsilon.call("game_action", {
                 id: matchData.match_id,
                 type: "attack",
-                entity_id: myChar.id,
-                target_id: targetAlly.id
+                entity_id: me.id,
+                target_coords: [ally.position]
             });
-            upsilon.assert(false, "ERROR: Friendly fire attack was accepted by the server!");
+            upsilon.assert(false, "ERROR: Friendly fire attack accepted by server");
         } catch (e) {
-            upsilon.log(`[Bot-${agentIndex}] ✅ Friendly fire properly rejected: ${e.message}`);
+            upsilon.log(`[Bot-${agentIndex}] ✅ Friendly fire rejected: ${e.message} (key=${e.error_key})`);
+            upsilon.assertEquals(e.error_key, "rule.friendly_fire", "Expected rule.friendly_fire");
+            success = true;
         }
     } else {
-        upsilon.log(`[Bot-${agentIndex}] SKIP: No allies visible this turn.`);
+        // Walk toward the ally to get into reach, but never attack a foe — that
+        // would end the test early or deplete HP needlessly.
+        upsilon.autoBattleTurn(matchData.match_id, ally);
     }
 }
 
+upsilon.assert(success, "Could not reach an ally to confirm friendly-fire rejection within 60 rounds");
 upsilon.log(`[Bot-${agentIndex}] CR-07: FRIENDLY FIRE PREVENTION PASSED.`);

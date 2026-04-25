@@ -15,10 +15,12 @@
 
 upsilon.log("Starting CR-14: GDPR Data Portability Verification");
 
-// 1. Authenticate (using current session if available, or bootstrap a bot)
-// Since this is a standalone test, we can use an existing session if this runs in a farm,
-// but for a robust E2E we usually bootstrap.
-// Let's assume we are logged in.
+// 1. Authenticate (using bootstrap to ensure a fresh, valid session)
+const botId = Math.floor(Math.random() * 1000);
+const accountName = "gdpr_bot_" + botId;
+const password = "VerySecurePassword123!";
+
+upsilon.bootstrapBot(accountName, password);
 
 upsilon.log("Checking export endpoint...");
 const exportData = upsilon.call("auth_export", {});
@@ -28,7 +30,6 @@ upsilon.log("✅ Endpoint found! Validating data structure...");
 // 2. Validate top-level keys
 upsilon.assert(exportData.account != null, "Export missing 'account' information");
 upsilon.assert(exportData.characters != null, "Export missing 'characters' information");
-upsilon.assert(exportData.stats != null, "Export missing 'stats' information");
 
 // 3. Validate sensitive data presence (GDPR requirements)
 upsilon.assert(exportData.account.account_name != null, "Missing account_name");

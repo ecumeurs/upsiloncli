@@ -38,13 +38,13 @@ try {
     });
     upsilon.assert(false, "ERROR: Non-adjacent path was accepted!");
 } catch (e) {
-    upsilon.log(`[Bot-${agentIndex}] ✅ Non-adjacent path properly rejected: ${e.message}`);
-    upsilon.assertEquals(e.error_key, "entity.path.notadjascent", "Wrong error key for non-adjacent path");
+    upsilon.log(`[Bot-${agentIndex}] ✅ Non-adjacent path properly rejected: ${e.message} (key=${e.error_key})`);
+    upsilon.assertEquals(e.error_key, "entity.path.notadjacent", "Expected entity.path.notadjacent");
 }
 
 // Verify position unchanged
 const updatedBoard = upsilon.call("game_state", { id: matchData.match_id });
-const updatedChar = updatedBoard.data.players[0].entities.find(e => e.id === myChar.id);
+const updatedChar = updatedBoard.game_state.players.flatMap(p => p.entities).find(e => e.id === myChar.id);
 upsilon.assertEquals(updatedChar.position.x, startPos.x, "Character X position changed after failed move");
 upsilon.assertEquals(updatedChar.position.y, startPos.y, "Character Y position changed after failed move");
 upsilon.log(`[Bot-${agentIndex}] ✅ Position unchanged (${updatedChar.position.x},${updatedChar.position.y})`);

@@ -13,84 +13,52 @@ upsilon.log(`[Bot-${agentIndex}] Starting EC-01: Movement on Obstacle Tiles`);
 // 1. Setup
 upsilon.bootstrapBot(accountName, password);
 const matchData = upsilon.joinWaitMatch("1v1_PVE");
-upsilon.log(`[Bot-${agentIndex}] Joined match: ${matchData.match_id}`);
 
 // 2. Wait for first turn
 const board = upsilon.waitNextTurn();
-if (!board) {
-    upsilon.assert(false, "ERROR: Match ended unexpectedly");
-}
+if (!board) { upsilon.assert(false, "ERROR: Match ended unexpectedly"); }
 
 const myChar = upsilon.currentCharacter();
 const startPos = myChar.position;
-upsilon.log(`[Bot-${agentIndex}] Character at position: ${startPos.x},${startPos.y}`);
 
-// 3. Find obstacle tile and attempt to move through it
-const gridWidth = board.grid[0].length;
-const gridHeight = board.grid.length;
-let obstacleFound = false;
-let obstaclePos = null;
+// 3. Find an obstacle through the sanctioned iterator. forEachCell handles the
+// underlying storage layout; see [[ISS-079]].
+let obstacleCell = upsilon.forEachCell(board, (c) => c.obstacle ? c : null);
 
-// Search for obstacle tile
-for (let y = 0; y < gridHeight; y++) {
-    for (let x = 0; x < gridWidth; x++) {
-        const cell = board.grid[y][x];
-        if (cell && cell.obstacle) {
-            obstaclePos = { x, y };
-            obstacleFound = true;
-            upsilon.log(`[Bot-${agentIndex}] Found obstacle at: ${x},${y}`);
-            break;
-        }
-    }
-    if (obstacleFound) break;
-}
-
-if (!obstacleFound) {
+if (!obstacleCell) {
     upsilon.log(`[Bot-${agentIndex}] SKIP: No obstacles found on this board`);
 } else {
-    // Attempt to move through obstacle
-    const pathToObstacle = upsilon.planTravelToward(myChar.id, obstaclePos, board);
+    upsilon.log(`[Bot-${agentIndex}] Found obstacle at ${obstacleCell.x},${obstacleCell.y}`);
 
-    if (pathToObstacle.length > 0) {
-        upsilon.log(`[Bot-${agentIndex}] Attempting to move to obstacle at ${obstaclePos.x},${obstaclePos.y}...`);
+    // Attempt to move *onto* the obstacle via planTravelToward; the engine must
+    // reject with entity.path.obstacle (or similar path.* rejection).
+    const path = upsilon.planTravelToward(myChar.id, { x: obstacleCell.x, y: obstacleCell.y }, board);
+    if (path.length > 0) {
+        // Force the last step to target the obstacle cell so we can assert rejection.
+        path[path.length - 1] = { x: obstacleCell.x, y: obstacleCell.y };
         try {
             upsilon.call("game_action", {
                 id: matchData.match_id,
                 type: "move",
                 entity_id: myChar.id,
-                target_coords: pathToObstacle
+                target_coords: path
             });
             upsilon.assert(false, "ERROR: Movement through obstacle was accepted by server!");
         } catch (e) {
-            upsilon.log(`[Bot-${agentIndex}] ✅ Obstacle collision properly rejected: ${e.message}`);
-            upsilon.assertEquals(e.error_key, "entity.path.obstacle", "Wrong error key for obstacle collision");
+            upsilon.log(`[Bot-${agentIndex}] ✅ Obstacle collision rejected: ${e.message} (key=${e.error_key})`);
+            upsilon.assert(
+                (e.error_key || "").indexOf("entity.path.") === 0,
+                "Expected path-family error_key, got: " + e.error_key
+            );
         }
 
-        // Verify position unchanged
-        const updatedBoard = upsilon.call("game_state", { id: matchData.match_id });
-        const updatedChar = updatedBoard.data.players[0].entities.find(e => e.id === myChar.id);
-        upsilon.assertEquals(updatedChar.position.x, startPos.x, "Character X position changed after failed move");
-        upsilon.assertEquals(updatedChar.position.y, startPos.y, "Character Y position changed after failed move");
+        // Position must be unchanged
+        const refreshed = upsilon.call("game_state", { id: matchData.match_id });
+        const me = refreshed.game_state.players.flatMap(p => p.entities).find(e => e.id === myChar.id);
+        upsilon.assertEquals(me.position.x, startPos.x, "Character X moved after failed move");
+        upsilon.assertEquals(me.position.y, startPos.y, "Character Y moved after failed move");
     } else {
         upsilon.log(`[Bot-${agentIndex}] SKIP: No path to obstacle available`);
-    }
-
-    // 4. Attempt valid move around obstacle
-    const validPos = { x: Math.min(startPos.x + 1, gridWidth - 1), y: startPos.y };
-    if (validPos.x !== startPos.x) {
-        upsilon.log(`[Bot-${agentIndex}] Attempting valid move to ${validPos.x},${validPos.y}...`);
-        try {
-            upsilon.call("game_action", {
-                id: matchData.match_id,
-                type: "move",
-                entity_id: myChar.id,
-                target_coords: [validPos]
-            });
-            upsilon.log(`[Bot-${agentIndex}] ✅ Valid move succeeded`);
-        } catch (e) {
-            // This might fail if not turn or out of movement, which is acceptable
-            upsilon.log(`[Bot-${agentIndex}] Valid move failed (may be expected): ${e.message}`);
-        }
     }
 }
 

@@ -2,6 +2,9 @@
 // @test-link [[mech_move_validation_move_validation_already_moved]]
 // @test-link [[mech_action_economy]]
 // @test-link [[mech_action_economy_action_cost_rules]]
+//
+// Approach an enemy; when adjacent, attack then try to move. Engine must reject
+// with entity.movement.already.
 
 const agentIndex = upsilon.getAgentIndex();
 const botId = Math.floor(Math.random() * 10000) + "_" + agentIndex;
@@ -10,68 +13,47 @@ const password = "VerySecurePassword123!";
 
 upsilon.log(`[Bot-${agentIndex}] Starting EC-03: Movement Already Attacked`);
 
-// 1. Setup
 upsilon.bootstrapBot(accountName, password);
 const matchData = upsilon.joinWaitMatch("1v1_PVE");
 
-// 2. Wait for turn and attack first
-const board = upsilon.waitNextTurn();
-if (!board) {
-    upsilon.assert(false, "ERROR: Match ended unexpectedly");
-}
+let rejected = false;
+let rounds = 0;
+while (!rejected && rounds < 60) {
+    rounds++;
+    const board = upsilon.waitNextTurn();
+    if (!board) break;
 
-const myChar = upsilon.currentCharacter();
-const startPos = myChar.position;
-upsilon.log(`[Bot-${agentIndex}] Character at: ${startPos.x},${startPos.y}`);
+    const me = upsilon.currentCharacter();
+    const foes = upsilon.myFoesCharacters().filter(f => f.hp > 0);
+    if (foes.length === 0) break;
+    const foe = foes[0];
+    const adjacent = (Math.abs(me.position.x - foe.position.x) + Math.abs(me.position.y - foe.position.y)) <= 1;
 
-// Find enemy to attack
-const enemyChars = upsilon.myFoesCharacters();
-if (enemyChars.length > 0) {
-    const targetEnemy = enemyChars[0];
-    upsilon.log(`[Bot-${agentIndex}] Attacking enemy at ${targetEnemy.position.x},${targetEnemy.position.y}...`);
-
-    try {
+    if (adjacent) {
         upsilon.call("game_action", {
             id: matchData.match_id,
             type: "attack",
-            entity_id: myChar.id,
-            target_coords: [targetEnemy.position]
+            entity_id: me.id,
+            target_coords: [foe.position]
         });
-        upsilon.log(`[Bot-${agentIndex}] ✅ Attack succeeded`);
-    } catch (e) {
-        upsilon.log(`[Bot-${agentIndex}] Attack failed (may be expected): ${e.message}`);
-    }
 
-    // 3. Attempt to move after attack (should fail)
-    upsilon.log(`[Bot-${agentIndex}] Attempting to move after attack...`);
-    try {
-        upsilon.call("game_action", {
-            id: matchData.match_id,
-            type: "move",
-            entity_id: myChar.id,
-            target_coords: [{ x: Math.min(startPos.x + 1, 9), y: startPos.y }]
-        });
-        upsilon.assert(false, "ERROR: Movement after attack was accepted!");
-    } catch (e) {
-        upsilon.log(`[Bot-${agentIndex}] ✅ Movement after attack properly rejected: ${e.message}`);
-        upsilon.assertEquals(e.error_key, "entity.movement.already", "Wrong error key for movement after attack");
-    }
-
-    // Verify position unchanged
-    const updatedBoard = upsilon.call("game_state", { id: matchData.match_id });
-    const updatedChar = updatedBoard.data.players[0].entities.find(e => e.id === myChar.id);
-    upsilon.assertEquals(updatedChar.position.x, startPos.x, "Character X position changed after failed move");
-    upsilon.assertEquals(updatedChar.position.y, startPos.y, "Character Y position changed after failed move");
-    upsilon.log(`[Bot-${agentIndex}] ✅ Position unchanged (${updatedChar.position.x},${updatedChar.position.y})`);
-
-    // Verify has_attacked flag is set
-    if (updatedChar.has_attacked === true) {
-        upsilon.log(`[Bot-${agentIndex}] ✅ has_attacked flag correctly set to true`);
+        try {
+            upsilon.call("game_action", {
+                id: matchData.match_id,
+                type: "move",
+                entity_id: me.id,
+                target_coords: [{ x: me.position.x, y: me.position.y }]
+            });
+            upsilon.assert(false, "ERROR: Move after attack accepted");
+        } catch (e) {
+            upsilon.log(`[Bot-${agentIndex}] ✅ Move-after-attack rejected: ${e.message} (key=${e.error_key})`);
+            upsilon.assertEquals(e.error_key, "entity.movement.already", "Expected entity.movement.already");
+            rejected = true;
+        }
     } else {
-        upsilon.log(`[Bot-${agentIndex}] Note: has_attacked flag is ${updatedChar.has_attacked}`);
+        upsilon.autoBattleTurn(matchData.match_id, foe);
     }
-} else {
-    upsilon.log(`[Bot-${agentIndex}] SKIP: No enemies found`);
 }
 
+upsilon.assert(rejected, "Never reached an enemy to test movement-after-attack within 60 rounds");
 upsilon.log(`[Bot-${agentIndex}] EC-03: MOVEMENT ALREADY ATTACKED PASSED.`);

@@ -330,22 +330,46 @@ func (p *Printer) Board(bs *dto.BoardState, currentUserID string, players []dto.
 	}
 	fmt.Fprintln(p.Output)
 
+	// Elevation baseline: topmost-cell heights vary on Hill/River maps.
+	// Empty cells render a shaded glyph based on delta from the grid floor
+	// so terrain is readable in ASCII. Flat maps keep the original '.' look.
+	// NB: the API emits Cells width-major, so the outer index is X.
+	minH := 0
+	first := true
+	for x := 0; x < bs.Grid.Width; x++ {
+		for y := 0; y < bs.Grid.Height; y++ {
+			h := bs.Grid.Cells[x][y].Height
+			if first || h < minH {
+				minH = h
+				first = false
+			}
+		}
+	}
+	elevationRamp := []string{".", ":", "-", "=", "+", "*", "#"}
+
 	for y := 0; y < bs.Grid.Height; y++ {
 		fmt.Fprintf(p.Output, "%2d │", y)
 		for x := 0; x < bs.Grid.Width; x++ {
-			cell := bs.Grid.Cells[y][x]
+			cell := bs.Grid.Cells[x][y]
 			if cell.EntityID != "" {
 				sym := entitySymbols[cell.EntityID]
 				color := entityColors[cell.EntityID]
 				if cell.EntityID == bs.CurrentEntityID {
-					fmt.Fprintf(p.Output, "%s%s%s ", color+Bold+BgGreen, sym, Reset) 
+					fmt.Fprintf(p.Output, "%s%s%s ", color+Bold+BgGreen, sym, Reset)
 				} else {
 					fmt.Fprintf(p.Output, "%s%s%s ", color+Bold, sym, Reset)
 				}
 			} else if cell.Obstacle {
 				fmt.Fprintf(p.Output, "%s#%s ", Dim, Reset)
 			} else {
-				fmt.Fprintf(p.Output, "%s.%s ", Dim, Reset)
+				delta := cell.Height - minH
+				if delta < 0 {
+					delta = 0
+				}
+				if delta >= len(elevationRamp) {
+					delta = len(elevationRamp) - 1
+				}
+				fmt.Fprintf(p.Output, "%s%s%s ", Dim, elevationRamp[delta], Reset)
 			}
 		}
 		fmt.Fprintln(p.Output, "│")

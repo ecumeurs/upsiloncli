@@ -15,69 +15,34 @@ const matchData = upsilon.joinWaitMatch("1v1_PVE");
 
 // 2. Wait for turn
 const board = upsilon.waitNextTurn();
-if (!board) {
-    upsilon.assert(false, "ERROR: Match ended unexpectedly");
-}
+if (!board) { upsilon.assert(false, "ERROR: Match ended unexpectedly"); }
 
 const myChar = upsilon.currentCharacter();
-const gridWidth = board.grid[0].length;
-const gridHeight = board.grid.length;
+const occupied = new Set(
+    board.players.flatMap(p => p.entities.map(e => `${e.position.x},${e.position.y}`))
+);
 
-// 3. Find empty tile to attack
-let emptyTileFound = false;
-let emptyTilePos = null;
+// 3. Locate an empty, walkable tile via the sanctioned iterator ([[ISS-079]]).
+const emptyCell = upsilon.forEachCell(board, (c) => {
+    if (c.obstacle) return null;
+    if (occupied.has(`${c.x},${c.y}`)) return null;
+    return c;
+});
 
-for (let y = 0; y < gridHeight; y++) {
-    for (let x = 0; x < gridWidth; x++) {
-        const cell = board.grid[y][x];
-        // Check if cell is empty (no obstacle, no water, no entity)
-        const hasEntity = board.data.players.some(p =>
-            p.entities.some(e => e.position.x === x && e.position.y === y)
-        );
-        if (cell && !cell.obstacle && !cell.water && !hasEntity) {
-            emptyTilePos = { x, y };
-            emptyTileFound = true;
-            upsilon.log(`[Bot-${agentIndex}] Found empty tile at: ${x},${y}`);
-            break;
-        }
-    }
-    if (emptyTileFound) break;
-}
-
-if (!emptyTileFound) {
-    upsilon.log(`[Bot-${agentIndex}] SKIP: No empty tiles found on this board`);
+if (!emptyCell) {
+    upsilon.log(`[Bot-${agentIndex}] SKIP: No empty tile found on this board`);
 } else {
-    // 4. Attempt to attack empty tile
-    upsilon.log(`[Bot-${agentIndex}] Attempting attack on empty tile (${emptyTilePos.x},${emptyTilePos.y})...`);
+    upsilon.log(`[Bot-${agentIndex}] Attempting attack on empty tile (${emptyCell.x},${emptyCell.y})...`);
     try {
         upsilon.call("game_action", {
             id: matchData.match_id,
             type: "attack",
             entity_id: myChar.id,
-            target_coords: [emptyTilePos]
+            target_coords: [{ x: emptyCell.x, y: emptyCell.y }]
         });
         upsilon.assert(false, "ERROR: Attack on empty tile was accepted!");
     } catch (e) {
-        upsilon.log(`[Bot-${agentIndex}] ✅ Empty tile attack properly rejected: ${e.message}`);
-        // Error key may be entity.attack.noentity or similar
-    }
-
-    // 5. Attack enemy on occupied tile (should succeed)
-    const enemyChars = upsilon.myFoesCharacters();
-    if (enemyChars.length > 0) {
-        const targetEnemy = enemyChars[0];
-        upsilon.log(`[Bot-${agentIndex}] Attempting attack on enemy at ${targetEnemy.position.x},${targetEnemy.position.y}...`);
-        try {
-            upsilon.call("game_action", {
-                id: matchData.match_id,
-                type: "attack",
-                entity_id: myChar.id,
-                target_coords: [targetEnemy.position]
-            });
-            upsilon.log(`[Bot-${agentIndex}] ✅ Attack on entity succeeded`);
-        } catch (e) {
-            upsilon.log(`[Bot-${agentIndex}] Entity attack failed (may be expected): ${e.message}`);
-        }
+        upsilon.log(`[Bot-${agentIndex}] ✅ Empty-tile attack rejected: ${e.message} (key=${e.error_key})`);
     }
 }
 
