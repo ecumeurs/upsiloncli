@@ -12,7 +12,6 @@ dependents:
   - [[uc_admin_history_management]]
   - [[uc_admin_login]]
   - [[uc_admin_user_management]]
-  - [[us_auth_logout]]
 ---
 
 # Admin Experience Requirement

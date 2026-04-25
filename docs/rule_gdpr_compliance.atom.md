@@ -10,8 +10,7 @@ tags: [gdpr, privacy]
 parents:
   - [[req_security]]
   - [[requirement_customer_user_account]]
-dependents:
-  - [[api_profile_export]]
+dependents: []
 ---
 # GDPR Compliance Rules
 

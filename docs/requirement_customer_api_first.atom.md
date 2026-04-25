@@ -10,8 +10,6 @@ parents:
   - [[req_player_experience]]
 priority: 3
 dependents:
-  - [[api_help_endpoint]]
-  - [[usecase_api_flow_game_turn]]
   - [[usecase_api_flow_matchmaking]]
 ---
 
