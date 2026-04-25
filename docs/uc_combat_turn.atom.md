@@ -10,11 +10,8 @@ tags: []
 parents:
   - [[req_player_experience]]
 dependents:
-  - [[mechanic_mech_battle_startup_handshake]]
-  - [[rule_turn_atomic_selection]]
   - [[rule_turn_clock]]
   - [[us_take_combat_turn]]
-  - [[usecase_api_flow_game_turn]]
 ---
 # Combat Turn Use Case
 

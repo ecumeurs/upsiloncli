@@ -26,7 +26,7 @@ run_scenario() {
     
     # Determine agent count (default 1, check if pvp or coordinate scripts)
     local agents=1
-    if [[ "$name" == *"pvp"* ]] || [[ "$name" == *"coordination"* ]] || [[ "$name" == *"combat"* ]] || [[ "$name" == *"friendly_fire"* ]] || [[ "$name" == *"resolution_standard"* ]] || [[ "$name" == *"progression_constraints"* ]]; then
+    if [[ "$name" == *"pvp"* ]] || [[ "$name" == *"coordination"* ]] || [[ "$name" == *"combat"* ]] || [[ "$name" == *"friendly_fire"* ]] || [[ "$name" == *"resolution_standard"* ]] || [[ "$name" == *"progression_constraints"* ]] || [[ "$name" == *"credit_economy"* ]]; then
         agents=2
     fi
     
