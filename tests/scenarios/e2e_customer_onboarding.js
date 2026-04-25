@@ -29,17 +29,17 @@ const characters = regResponse.user.characters;
 upsilon.assertEquals(characters.length, 3, "Account should have exactly 3 characters");
 upsilon.log("✅ Account created with 3 characters");
 
-// 3. Each character has base stats (3 HP, 1 Move, 1 Attack, 1 Def) + 4 random points
-// Total points should be 3+1+1+1 + 4 = 10
+// 3. Each character has base stats (V2 Baseline: 30 HP, 3 Movement, 10 Attack, 5 Def)
+// Total points should be 30+3+10+5 = 48
 characters.forEach((char, index) => {
     const totalStats = char.hp + char.attack + char.defense + char.movement;
     upsilon.log(`Character ${index} stats: HP=${char.hp}, ATK=${char.attack}, DEF=${char.defense}, MOV=${char.movement} (Total=${totalStats})`);
     
-    upsilon.assert(char.hp >= 3, `Character ${index} HP should be at least 3`);
-    upsilon.assert(char.movement >= 1, `Character ${index} Movement should be at least 1`);
-    upsilon.assert(char.attack >= 1, `Character ${index} Attack should be at least 1`);
-    upsilon.assert(char.defense >= 1, `Character ${index} Defense should be at least 1`);
-    upsilon.assertEquals(totalStats, 10, `Character ${index} should have exactly 10 total stat points`);
+    upsilon.assert(char.hp >= 30, `Character ${index} HP should be at least 30`);
+    upsilon.assert(char.movement >= 3, `Character ${index} Movement should be at least 3`);
+    upsilon.assert(char.attack >= 10, `Character ${index} Attack should be at least 10`);
+    upsilon.assert(char.defense >= 5, `Character ${index} Defense should be at least 5`);
+    upsilon.assertEquals(totalStats, 48, `Character ${index} should have exactly 48 total stat points`);
 });
 upsilon.log("✅ Character stats meet base requirements and random dispatch");
 

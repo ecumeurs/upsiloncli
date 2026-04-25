@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 	"context"
+	"strings"
 
 	"github.com/dop251/goja"
 	"github.com/ecumeurs/upsiloncli/internal/endpoint"
@@ -74,7 +75,9 @@ func RunFarm(baseURL string, reg *endpoint.Registry, scriptPaths []string, logDi
 					fmt.Printf("[{%s}] [Farm] Error creating log directory %s: %v\n", ts, absLogDir, err)
 					logger = os.Stdout
 				} else {
-					fileName := fmt.Sprintf("%s.log", agentID)
+					scriptBase := filepath.Base(scriptPath)
+					scriptBase = strings.TrimSuffix(scriptBase, filepath.Ext(scriptBase))
+					fileName := fmt.Sprintf("%s_%s.log", scriptBase, agentID)
 					logPath := filepath.Join(absLogDir, fileName)
 					f, err := os.Create(logPath)
 					if err != nil {

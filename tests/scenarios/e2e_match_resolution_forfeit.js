@@ -8,23 +8,31 @@ const password = "VerySecurePassword123!";
 
 upsilon.log("Starting CR-09: Match Resolution (Forfeit) for " + accountName);
 
-// 1. Setup
 upsilon.bootstrapBot(accountName, password);
 const matchData = upsilon.joinWaitMatch("1v1_PVE");
 
-// 2. Player chooses to forfeit
+// 1. Forfeit immediately.
 upsilon.log("Forfeiting match immediately...");
 upsilon.call("game_forfeit", { id: matchData.match_id });
-
-// 3. System processes forfeit immediately
 upsilon.log("✅ Forfeit command sent");
 
-// 4. Verification: End match detected
-// (The bootstrapBot teardown will handle the final status check if it runs again, 
-// but here we manually verify the match concluded)
-upsilon.sleep(1000);
-const profile = upsilon.call("profile_get", {});
-upsilon.assertEquals(profile.total_losses, 1, "Should have 1 loss after forfeiting");
+// 2. The webhook → Laravel post-match progression is asynchronous; instead of
+// a fixed sleep we poll profile_get for the loss to land. Bound it to keep the
+// test from hanging when the engine is wedged.
+let lossesObserved = 0;
+const DEADLINE_MS = 8000;
+const POLL_MS = 250;
+const start = Date.now();
+while (Date.now() - start < DEADLINE_MS) {
+    const profile = upsilon.call("profile_get", {});
+    if ((profile.total_losses || 0) >= 1) {
+        lossesObserved = profile.total_losses;
+        break;
+    }
+    upsilon.sleep(POLL_MS);
+}
+
+upsilon.assertEquals(lossesObserved, 1, "Should have 1 loss after forfeiting (poll exhausted)");
 upsilon.log("✅ Loss recorded correctly in profile");
 
 upsilon.log("CR-09: MATCH RESOLUTION (FORFEIT) PASSED.");

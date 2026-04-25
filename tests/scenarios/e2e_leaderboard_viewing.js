@@ -13,7 +13,8 @@ upsilon.bootstrapBot(accountName, password);
 
 // 2. Access leaderboard
 upsilon.log("Requesting leaderboard for 1v1_PVP...");
-const leaderboard = upsilon.call("leaderboard_index", { game_mode: "1v1_PVP" });
+const response = upsilon.call("leaderboard", { mode: "1v1_PVP" });
+const leaderboard = response.results;
 
 // 3. Validation Points
 upsilon.assert(Array.isArray(leaderboard), "Leaderboard should be an array");
@@ -21,9 +22,9 @@ upsilon.log(`✅ Leaderboard received with ${leaderboard.length} entries`);
 
 if (leaderboard.length > 0) {
     const topPlayer = leaderboard[0];
-    upsilon.assert(topPlayer.nickname != null, "Entry should have a nickname");
+    upsilon.assert(topPlayer.account_name != null, "Entry should have an account_name");
     upsilon.assert(topPlayer.score != null, "Entry should have a score");
-    upsilon.log(`✅ Top player: ${topPlayer.nickname} (Score: ${topPlayer.score})`);
+    upsilon.log(`✅ Top player: ${topPlayer.account_name} (Score: ${topPlayer.score})`);
 }
 
 upsilon.log("CR-12: LEADERBOARD VIEWING PASSED.");

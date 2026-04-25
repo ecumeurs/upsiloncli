@@ -47,7 +47,7 @@ try {
 
 // Verify position unchanged
 const updatedBoard = upsilon.call("game_state", { id: matchData.match_id });
-const updatedChar = updatedBoard.data.players[0].entities.find(e => e.id === myChar.id);
+const updatedChar = updatedBoard.game_state.players.flatMap(p => p.entities).find(e => e.id === myChar.id);
 upsilon.assertEquals(updatedChar.position.x, startPos.x, "Character X position changed after failed move");
 upsilon.assertEquals(updatedChar.position.y, startPos.y, "Character Y position changed after failed move");
 upsilon.log(`[Bot-${agentIndex}] ✅ Position unchanged (${updatedChar.position.x},${updatedChar.position.y})`);

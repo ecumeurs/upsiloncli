@@ -49,6 +49,9 @@ func (a *Agent) bindJSAPI() {
 		"myFoes":              a.jsMyFoes,
 		"myFoesCharacters":    a.jsMyFoesCharacters,
 		"cellContentAt":       a.jsCellContentAt,
+		"cellAt":              a.jsCellAt,
+		"forEachCell":         a.jsForEachCell,
+		"autoBattleTurn":      a.jsAutoBattleTurn,
 
 		// High-level Lifecycle Helpers
 		"bootstrapBot":      a.jsBootstrapBot,
@@ -92,7 +95,13 @@ func (a *Agent) jsCall(routeName string, params map[string]interface{}) (interfa
 	// Convert JS params to string map expected by endpoint.Execute
 	inputs := make(map[string]string)
 	for k, v := range params {
-		inputs[k] = fmt.Sprintf("%v", v)
+		if str, ok := v.(string); ok {
+			inputs[k] = str
+		} else {
+			// Serialize everything else to JSON to preserve structure for the endpoint to decode
+			b, _ := json.Marshal(v)
+			inputs[k] = string(b)
+		}
 	}
 
 	resp, err := ep.ExecuteRaw(a.Client, a.Session, inputs)
@@ -102,7 +111,25 @@ func (a *Agent) jsCall(routeName string, params map[string]interface{}) (interfa
 	}
 
 	if !resp.Success {
-		panic(a.VM.ToValue(resp))
+		a.jsLog(fmt.Sprintf("[CALL_ERROR] Route %s failed: %s", routeName, resp.Message))
+		// Throw a structured error matching [[api_standard_envelope]]. The engine's
+		// rule-rejection error key (e.g. "entity.path.obstacle") is carried in
+		// meta.error_key and lifted to a top-level `error_key` for easy access in
+		// catch blocks. Keeping `meta` on the thrown value preserves forward
+		// compatibility for additional debug fields.
+		envErr := map[string]interface{}{
+			"success":    false,
+			"message":    fmt.Sprintf("API Error [%s]: %s", routeName, resp.Message),
+			"request_id": resp.RequestID,
+			"data":       nil,
+			"meta":       resp.Meta,
+		}
+		if resp.Meta != nil {
+			if v, ok := resp.Meta["error_key"]; ok {
+				envErr["error_key"] = v
+			}
+		}
+		panic(a.VM.ToValue(envErr))
 	}
 
 	// PROACTIVE TURN MEMORY: If an attack was successful, mark it immediately
@@ -124,6 +151,7 @@ func (a *Agent) jsCall(routeName string, params map[string]interface{}) (interfa
 }
 
 func (a *Agent) throwStructuredError(msg string) {
+	a.jsLog(fmt.Sprintf("[INTERNAL_ERROR] %s", msg))
 	panic(a.VM.ToValue(map[string]interface{}{
 		"success":    false,
 		"message":    msg,
@@ -495,6 +523,265 @@ func (a *Agent) jsCellContentAt(x, y int) interface{} {
 	}
 }
 
+// resolveGridFromArg accepts either a board (BoardState-like) or a grid directly
+// and returns a normalized *dto.Grid. This lets JS callers write cellAt(board, x, y)
+// or cellAt(board.grid, x, y) interchangeably.
+func (a *Agent) resolveGridFromArg(v goja.Value) *dto.Grid {
+	if v == nil || goja.IsUndefined(v) || goja.IsNull(v) {
+		return nil
+	}
+	m, ok := v.Export().(map[string]interface{})
+	if !ok {
+		return nil
+	}
+	// Prefer inner "grid" if it looks like a board
+	if inner, ok := m["grid"].(map[string]interface{}); ok {
+		g := &dto.Grid{}
+		b, _ := json.Marshal(inner)
+		if err := json.Unmarshal(b, g); err == nil && len(g.Cells) > 0 {
+			return g
+		}
+	}
+	// Otherwise treat the argument itself as a Grid
+	g := &dto.Grid{}
+	b, _ := json.Marshal(m)
+	if err := json.Unmarshal(b, g); err == nil && len(g.Cells) > 0 {
+		return g
+	}
+	return nil
+}
+
+// jsCellAt is the ONLY sanctioned way for scenario scripts to read a cell.
+// It hides the underlying storage layout so we can migrate to Y-major
+// (see [[ISS-079]]) without touching every test. The returned object is
+// { x, y, obstacle, height, entity_id } or null if out of bounds / no board.
+// @spec-link [[ISS-079]]
+func (a *Agent) jsCellAt(call goja.FunctionCall) goja.Value {
+	if len(call.Arguments) < 3 {
+		return goja.Null()
+	}
+	g := a.resolveGridFromArg(call.Arguments[0])
+	if g == nil {
+		// Fall back to the session board so cellAt(null, x, y) still works.
+		if b := a.Session.LastBoard(); b != nil {
+			g = &b.Grid
+		}
+	}
+	if g == nil {
+		return goja.Null()
+	}
+	x := int(call.Arguments[1].ToInteger())
+	y := int(call.Arguments[2].ToInteger())
+
+	// Current contract: cells[x][y] (width-major). Keep the check strict so
+	// callers get a hard null on bad bounds instead of a wrong cell.
+	if x < 0 || x >= len(g.Cells) {
+		return goja.Null()
+	}
+	col := g.Cells[x]
+	if y < 0 || y >= len(col) {
+		return goja.Null()
+	}
+	c := col[y]
+	return a.VM.ToValue(map[string]interface{}{
+		"x":         x,
+		"y":         y,
+		"obstacle":  c.Obstacle,
+		"height":    c.Height,
+		"entity_id": c.EntityID,
+	})
+}
+
+// jsForEachCell iterates every cell in (x, y) order and invokes the callback
+// with the cell object produced by jsCellAt. Returning a truthy value from the
+// callback stops iteration early, mirroring Array.prototype.some semantics.
+// @spec-link [[ISS-079]]
+func (a *Agent) jsForEachCell(call goja.FunctionCall) goja.Value {
+	if len(call.Arguments) < 2 {
+		return goja.Undefined()
+	}
+	g := a.resolveGridFromArg(call.Arguments[0])
+	if g == nil {
+		if b := a.Session.LastBoard(); b != nil {
+			g = &b.Grid
+		}
+	}
+	if g == nil {
+		return goja.Undefined()
+	}
+	cb, ok := goja.AssertFunction(call.Arguments[1])
+	if !ok {
+		return goja.Undefined()
+	}
+	for x := 0; x < len(g.Cells); x++ {
+		for y := 0; y < len(g.Cells[x]); y++ {
+			c := g.Cells[x][y]
+			cellVal := a.VM.ToValue(map[string]interface{}{
+				"x":         x,
+				"y":         y,
+				"obstacle":  c.Obstacle,
+				"height":    c.Height,
+				"entity_id": c.EntityID,
+			})
+			res, err := cb(goja.Undefined(), cellVal)
+			if err != nil {
+				panic(a.VM.ToValue(fmt.Sprintf("forEachCell callback error: %v", err)))
+			}
+			if res != nil && !goja.IsUndefined(res) && !goja.IsNull(res) && res.ToBoolean() {
+				return res
+			}
+		}
+	}
+	return goja.Undefined()
+}
+
+// jsAutoBattleTurn executes one canonical battle turn per the intended AI:
+//   1. Identify the nearest living foe (or a caller-provided target).
+//   2. If out of reach, plan a path and MOVE toward it.
+//   3. If in reach and the unit has not attacked yet, ATTACK.
+//   4. Otherwise PASS.
+//
+// It returns a small report: { action, target_id, path_len } so scenarios can
+// assert on what happened without re-reading the board.
+//
+// Reach is computed as "0 steps to reach a cell adjacent to the foe", i.e.
+// planTravelToward returning an empty path when the unit is already adjacent.
+// This decouples the reach heuristic from hard-coded Manhattan distance and
+// from skill ranges that may evolve.
+//
+// Usage:
+//   upsilon.autoBattleTurn(matchId)
+//   upsilon.autoBattleTurn(matchId, foeCharacter)   // target a specific foe
+//
+// @spec-link [[uc_combat_turn]]
+func (a *Agent) jsAutoBattleTurn(call goja.FunctionCall) goja.Value {
+	if len(call.Arguments) < 1 {
+		panic(a.VM.ToValue("autoBattleTurn requires at least (matchId)"))
+	}
+	matchID := call.Arguments[0].String()
+
+	board := a.Session.LastBoard()
+	if board == nil {
+		panic(a.VM.ToValue("autoBattleTurn called without a board snapshot — did you forget waitNextTurn()?"))
+	}
+
+	// Locate the acting entity (my character for this turn).
+	var me *dto.Entity
+	for i := range board.Players {
+		for j := range board.Players[i].Entities {
+			if board.Players[i].Entities[j].ID == board.CurrentEntityID {
+				me = &board.Players[i].Entities[j]
+				break
+			}
+		}
+		if me != nil {
+			break
+		}
+	}
+	if me == nil {
+		panic(a.VM.ToValue("autoBattleTurn: could not find current entity on board"))
+	}
+
+	// Target selection: explicit foe first, else nearest living foe.
+	var foe *dto.Entity
+	if len(call.Arguments) >= 2 && !goja.IsUndefined(call.Arguments[1]) && !goja.IsNull(call.Arguments[1]) {
+		var explicit dto.Entity
+		b, _ := json.Marshal(call.Arguments[1].Export())
+		if err := json.Unmarshal(b, &explicit); err == nil && explicit.ID != "" {
+			foe = &explicit
+		}
+	}
+	if foe == nil {
+		myTeam := -1
+		for _, p := range board.Players {
+			if p.IsSelf {
+				myTeam = p.Team
+				break
+			}
+		}
+		bestDist := 1 << 30
+		for i := range board.Players {
+			if board.Players[i].Team == myTeam {
+				continue
+			}
+			for j := range board.Players[i].Entities {
+				e := board.Players[i].Entities[j]
+				if e.HP <= 0 {
+					continue
+				}
+				d := abs(e.Position.X-me.Position.X) + abs(e.Position.Y-me.Position.Y)
+				if d < bestDist {
+					bestDist = d
+					foe = &board.Players[i].Entities[j]
+				}
+			}
+		}
+	}
+
+	report := map[string]interface{}{
+		"action":    "pass",
+		"target_id": "",
+		"path_len":  0,
+	}
+
+	// No foe? Pass.
+	if foe == nil {
+		a.jsCall("game_action", map[string]interface{}{
+			"id":        matchID,
+			"type":      "pass",
+			"entity_id": me.ID,
+		})
+		return a.VM.ToValue(report)
+	}
+
+	// Compute a path toward the foe. An empty path means we're already adjacent.
+	boardCopy := *board
+	boardCopy.Entities = a.flattenEntities(&boardCopy)
+	path := PlanTravelToward(&boardCopy, me.ID, foe.Position)
+
+	inReach := len(path) == 0 && (abs(me.Position.X-foe.Position.X)+abs(me.Position.Y-foe.Position.Y)) <= 1
+
+	if inReach && !a.hasAttackedThisTurn {
+		report["action"] = "attack"
+		report["target_id"] = foe.ID
+		a.jsCall("game_action", map[string]interface{}{
+			"id":            matchID,
+			"type":          "attack",
+			"entity_id":     me.ID,
+			"target_coords": []dto.Position{foe.Position},
+		})
+		return a.VM.ToValue(report)
+	}
+
+	if len(path) > 0 && !a.hasAttackedThisTurn {
+		report["action"] = "move"
+		report["target_id"] = foe.ID
+		report["path_len"] = len(path)
+		a.jsCall("game_action", map[string]interface{}{
+			"id":            matchID,
+			"type":          "move",
+			"entity_id":     me.ID,
+			"target_coords": path,
+		})
+		return a.VM.ToValue(report)
+	}
+
+	// No path, out of reach, or already attacked: pass.
+	a.jsCall("game_action", map[string]interface{}{
+		"id":        matchID,
+		"type":      "pass",
+		"entity_id": me.ID,
+	})
+	return a.VM.ToValue(report)
+}
+
+func abs(v int) int {
+	if v < 0 {
+		return -v
+	}
+	return v
+}
+
 // --- New High-level Lifecycle Helpers ---
 
 func (a *Agent) jsRegistrationDelay() {
@@ -504,7 +791,7 @@ func (a *Agent) jsRegistrationDelay() {
 }
 
 func (a *Agent) jsHumanDelay() {
-	ms := 1000 + rand.Intn(14000)
+	ms := 100 + rand.Intn(500)
 	a.jsLog(fmt.Sprintf("Simulating human delay: %vms", ms))
 	a.jsSleep(ms)
 }
@@ -521,19 +808,29 @@ func (a *Agent) jsBootstrapBot(call goja.FunctionCall) goja.Value {
 	a.GoTeardownHook = func() {
 		a.jsLog("Running Automated Teardown...")
 
-		// Leave queue
-		a.jsCall("matchmaking_leave", nil)
+		safeCall := func(name string, params map[string]interface{}) {
+			defer func() {
+				if r := recover(); r != nil {
+					a.jsLog(fmt.Sprintf("Teardown step '%s' skipped: %v", name, r))
+				}
+			}()
+			a.jsCall(name, params)
+		}
 
-		// Forfeit match if ID exists
+		// 1. Leave queue
+		safeCall("matchmaking_leave", nil)
+
+		// 2. Forfeit match if ID exists
 		matchID := a.jsGetContext("match_id")
 		if matchID != "" {
 			a.jsLog("Forfeiting match " + matchID)
-			a.jsCall("game_forfeit", map[string]interface{}{"id": matchID})
+			safeCall("game_forfeit", map[string]interface{}{"id": matchID})
+			a.jsSetContext("match_id", "")
 		}
 
-		// Delete account
+		// 3. Delete account
 		a.jsLog("Deleting temporary account: " + accountName)
-		a.jsCall("auth_delete", nil)
+		safeCall("auth_delete", nil)
 	}
 
 	// 2. Registration Delay

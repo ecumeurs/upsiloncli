@@ -529,23 +529,37 @@ func (e *GameAction) ExecuteRaw(client *api.Client, sess *session.Session, input
 		"type":      inputs["type"],
 	}
 
-	// Parse target_coords "x,y" into [{x, y}]
+	// Parse target_coords "x,y" into [{x, y}] OR JSON Array
 	if tc := inputs["target_coords"]; tc != "" {
-		var coords []map[string]int
-		parts := strings.Split(tc, ";") // support multiple coords separated by ;
-		for _, part := range parts {
-			xy := strings.Split(strings.TrimSpace(part), ",")
-			if len(xy) == 2 {
-				x, y := 0, 0
-				fmt.Sscanf(xy[0], "%d", &x)
-				fmt.Sscanf(xy[1], "%d", &y)
-				coords = append(coords, map[string]int{"x": x, "y": y})
+		if strings.HasPrefix(tc, "[") {
+			var coords []map[string]int
+			if err := json.Unmarshal([]byte(tc), &coords); err == nil {
+				body["target_coords"] = coords
+			} else {
+				// If unmarshal fails, maybe it's not JSON? Fallback to legacy
+				body["target_coords"] = parseLegacyCoords(tc)
 			}
+		} else {
+			body["target_coords"] = parseLegacyCoords(tc)
 		}
-		body["target_coords"] = coords
 	}
 
 	return client.Post(path, body)
+}
+
+func parseLegacyCoords(tc string) []map[string]int {
+	var coords []map[string]int
+	parts := strings.Split(tc, ";") // support multiple coords separated by ;
+	for _, part := range parts {
+		xy := strings.Split(strings.TrimSpace(part), ",")
+		if len(xy) == 2 {
+			x, y := 0, 0
+			fmt.Sscanf(xy[0], "%d", &x)
+			fmt.Sscanf(xy[1], "%d", &y)
+			coords = append(coords, map[string]int{"x": x, "y": y})
+		}
+	}
+	return coords
 }
 
 func (e *GameAction) Execute(client *api.Client, sess *session.Session, inputs map[string]string) error {

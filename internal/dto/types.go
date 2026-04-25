@@ -24,17 +24,21 @@ type Entity struct {
 	IsSelf   bool     `json:"is_self"`
 }
 
-// Cell represents a single tile on the grid.
+// Cell is the topmost cell at a (x, y) column. Caves/underground are not
+// exposed; what you see here IS the walkable surface.
 type Cell struct {
 	EntityID string `json:"entity_id"`
 	Obstacle bool   `json:"obstacle"`
+	Height   int    `json:"height"` // Z index of the topmost cell (surface elevation)
 }
 
-// Grid is the tactical map layout.
+// Grid is the tactical map layout. Cells is a topmost-cell projection of the
+// engine's 3D grid (see Cell). MaxHeight is the engine's Z ceiling.
 type Grid struct {
-	Width  int      `json:"width"`
-	Height int      `json:"height"`
-	Cells  [][]Cell `json:"cells"`
+	Width     int      `json:"width"`
+	Height    int      `json:"height"`
+	MaxHeight int      `json:"max_height"`
+	Cells     [][]Cell `json:"cells"`
 }
 
 // Turn represents an entry in the initiative timeline.

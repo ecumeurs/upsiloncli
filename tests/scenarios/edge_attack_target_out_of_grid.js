@@ -20,8 +20,8 @@ if (!board) {
 }
 
 const myChar = upsilon.currentCharacter();
-const gridWidth = board.grid[0].length;
-const gridHeight = board.grid.length;
+const gridWidth = board.grid.width;
+const gridHeight = board.grid.height;
 
 upsilon.log(`[Bot-${agentIndex}] Grid: ${gridWidth}x${gridHeight}`);
 
