@@ -1,14 +1,14 @@
 ---
 id: watch_services
 human_name: "Service Monitoring Utility"
-type: BUILD
+type: MECHANIC
 layer: IMPLEMENTATION
 version: 1.0
 status: DRAFT
 priority: 3
 tags: [monitoring, dev-tools, diagnostics]
 parents:
-  - [[infra_mvp_docker]]
+  - [[upsilonapi:infra_mvp_docker]]
 dependents: []
 ---
 
