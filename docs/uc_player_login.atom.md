@@ -11,10 +11,7 @@ parents:
   - [[api_auth_login]]
   - [[req_player_experience]]
   - [[ui_dashboard]]
-dependents:
-  - [[api_auth_login]]
-  - [[ui_dashboard]]
-  - [[ui_login]]
+dependents: []
 ---
 
 # Player Login Use Case
