@@ -11,8 +11,7 @@ parents:
   - [[infra_seed_admin]]
   - [[req_admin_experience]]
   - [[rule_admin_access_restriction]]
-dependents:
-  - [[ui_admin_dashboard]]
+dependents: []
 ---
 
 # Admin Login Use Case
