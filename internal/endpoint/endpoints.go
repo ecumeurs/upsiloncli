@@ -436,6 +436,179 @@ func (e *LeaderboardGet) Execute(client *api.Client, sess *session.Session, inpu
 	return err
 }
 
+// --- Shop & Inventory (ISS-074) ---
+
+// ShopBrowse implements Endpoint for GET /api/v1/shop/items.
+type ShopBrowse struct{}
+
+func (e *ShopBrowse) Name() string        { return "shop_browse" }
+func (e *ShopBrowse) Description() string { return "Browse items available in the shop" }
+func (e *ShopBrowse) Method() string      { return "GET" }
+func (e *ShopBrowse) Path() string        { return "/api/v1/shop/items" }
+func (e *ShopBrowse) Auth() bool          { return true }
+func (e *ShopBrowse) Params() []Param     { return nil }
+
+func (e *ShopBrowse) Next() []string {
+	return []string{"shop_purchase", "profile_inventory"}
+}
+
+func (e *ShopBrowse) ExecuteRaw(client *api.Client, sess *session.Session, inputs map[string]string) (*api.Response, error) {
+	return client.Get(e.Path())
+}
+
+func (e *ShopBrowse) Execute(client *api.Client, sess *session.Session, inputs map[string]string) error {
+	_, err := e.ExecuteRaw(client, sess, inputs)
+	return err
+}
+
+// ShopPurchase implements Endpoint for POST /api/v1/shop/purchase.
+type ShopPurchase struct{}
+
+func (e *ShopPurchase) Name() string        { return "shop_purchase" }
+func (e *ShopPurchase) Description() string { return "Purchase an item from the shop" }
+func (e *ShopPurchase) Method() string      { return "POST" }
+func (e *ShopPurchase) Path() string        { return "/api/v1/shop/purchase" }
+func (e *ShopPurchase) Auth() bool          { return true }
+func (e *ShopPurchase) Params() []Param {
+	return []Param{
+		{Name: "shop_item_id", Hint: "catalog item UUID", Required: true},
+		{Name: "quantity", Hint: "amount to buy (default: 1)"},
+	}
+}
+
+func (e *ShopPurchase) Next() []string {
+	return []string{"profile_inventory", "shop_browse"}
+}
+
+func (e *ShopPurchase) ExecuteRaw(client *api.Client, sess *session.Session, inputs map[string]string) (*api.Response, error) {
+	body := map[string]interface{}{
+		"shop_item_id": inputs["shop_item_id"],
+	}
+	if v := inputs["quantity"]; v != "" {
+		body["quantity"] = v
+	}
+	return client.Post(e.Path(), body)
+}
+
+func (e *ShopPurchase) Execute(client *api.Client, sess *session.Session, inputs map[string]string) error {
+	resp, err := e.ExecuteRaw(client, sess, inputs)
+	if err != nil {
+		return err
+	}
+	SyncSession(resp, sess)
+	return nil
+}
+
+// InventoryList implements Endpoint for GET /api/v1/profile/inventory.
+type InventoryList struct{}
+
+func (e *InventoryList) Name() string        { return "profile_inventory" }
+func (e *InventoryList) Description() string { return "List owned items in inventory" }
+func (e *InventoryList) Method() string      { return "GET" }
+func (e *InventoryList) Path() string        { return "/api/v1/profile/inventory" }
+func (e *InventoryList) Auth() bool          { return true }
+func (e *InventoryList) Params() []Param     { return nil }
+
+func (e *InventoryList) Next() []string {
+	return []string{"character_equipment_list", "shop_browse"}
+}
+
+func (e *InventoryList) ExecuteRaw(client *api.Client, sess *session.Session, inputs map[string]string) (*api.Response, error) {
+	return client.Get(e.Path())
+}
+
+func (e *InventoryList) Execute(client *api.Client, sess *session.Session, inputs map[string]string) error {
+	_, err := e.ExecuteRaw(client, sess, inputs)
+	return err
+}
+
+// EquipmentList implements Endpoint for GET /api/v1/profile/character/{characterId}/equipment.
+type EquipmentList struct{}
+
+func (e *EquipmentList) Name() string        { return "character_equipment_list" }
+func (e *EquipmentList) Description() string { return "Show items equipped on a character" }
+func (e *EquipmentList) Method() string      { return "GET" }
+func (e *EquipmentList) Path() string        { return "/api/v1/profile/character/{characterId}/equipment" }
+func (e *EquipmentList) Auth() bool          { return true }
+func (e *EquipmentList) Params() []Param {
+	return []Param{
+		{Name: "characterId", Hint: "character UUID", Required: true, ContextKey: "character_id"},
+	}
+}
+
+func (e *EquipmentList) Next() []string {
+	return []string{"character_equip", "character_unequip", "profile_inventory"}
+}
+
+func (e *EquipmentList) ExecuteRaw(client *api.Client, sess *session.Session, inputs map[string]string) (*api.Response, error) {
+	path := strings.ReplaceAll(e.Path(), "{characterId}", inputs["characterId"])
+	return client.Get(path)
+}
+
+func (e *EquipmentList) Execute(client *api.Client, sess *session.Session, inputs map[string]string) error {
+	_, err := e.ExecuteRaw(client, sess, inputs)
+	return err
+}
+
+// EquipmentEquip implements Endpoint for POST /api/v1/profile/character/{characterId}/equip.
+type EquipmentEquip struct{}
+
+func (e *EquipmentEquip) Name() string        { return "character_equip" }
+func (e *EquipmentEquip) Description() string { return "Equip an item from inventory to a character" }
+func (e *EquipmentEquip) Method() string      { return "POST" }
+func (e *EquipmentEquip) Path() string        { return "/api/v1/profile/character/{characterId}/equip" }
+func (e *EquipmentEquip) Auth() bool          { return true }
+func (e *EquipmentEquip) Params() []Param {
+	return []Param{
+		{Name: "characterId", Hint: "character UUID", Required: true, ContextKey: "character_id"},
+		{Name: "item_id", Hint: "inventory item UUID", Required: true},
+	}
+}
+
+func (e *EquipmentEquip) Next() []string {
+	return []string{"character_equipment_list", "character_unequip"}
+}
+
+func (e *EquipmentEquip) ExecuteRaw(client *api.Client, sess *session.Session, inputs map[string]string) (*api.Response, error) {
+	path := strings.ReplaceAll(e.Path(), "{characterId}", inputs["characterId"])
+	return client.Post(path, map[string]string{"item_id": inputs["item_id"]})
+}
+
+func (e *EquipmentEquip) Execute(client *api.Client, sess *session.Session, inputs map[string]string) error {
+	_, err := e.ExecuteRaw(client, sess, inputs)
+	return err
+}
+
+// EquipmentUnequip implements Endpoint for DELETE /api/v1/profile/character/{characterId}/unequip/{slot}.
+type EquipmentUnequip struct{}
+
+func (e *EquipmentUnequip) Name() string        { return "character_unequip" }
+func (e *EquipmentUnequip) Description() string { return "Unequip an item from a character slot" }
+func (e *EquipmentUnequip) Method() string      { return "DELETE" }
+func (e *EquipmentUnequip) Path() string        { return "/api/v1/profile/character/{characterId}/unequip/{slot}" }
+func (e *EquipmentUnequip) Auth() bool          { return true }
+func (e *EquipmentUnequip) Params() []Param {
+	return []Param{
+		{Name: "characterId", Hint: "character UUID", Required: true, ContextKey: "character_id"},
+		{Name: "slot", Hint: "armor|utility|weapon", Required: true},
+	}
+}
+
+func (e *EquipmentUnequip) Next() []string {
+	return []string{"character_equipment_list", "character_equip"}
+}
+
+func (e *EquipmentUnequip) ExecuteRaw(client *api.Client, sess *session.Session, inputs map[string]string) (*api.Response, error) {
+	path := strings.ReplaceAll(e.Path(), "{characterId}", inputs["characterId"])
+	path = strings.ReplaceAll(path, "{slot}", inputs["slot"])
+	return client.Delete(path)
+}
+
+func (e *EquipmentUnequip) Execute(client *api.Client, sess *session.Session, inputs map[string]string) error {
+	_, err := e.ExecuteRaw(client, sess, inputs)
+	return err
+}
+
 // --- Game Proxy ---
 
 // GameState implements Endpoint for GET /api/v1/game/{id}.
@@ -642,6 +815,9 @@ func SyncSession(resp *api.Response, sess *session.Session) {
 	if name, ok := data["account_name"].(string); ok {
 		sess.Set("account_name", name)
 	}
+	if credits, ok := data["credits"].(float64); ok {
+		sess.Set("credits", fmt.Sprintf("%.0f", credits))
+	}
 	if key, ok := data["ws_channel_key"].(string); ok {
 		sess.SetWSChannelKey(key)
 	}
@@ -735,6 +911,14 @@ func RegisterAll(reg *Registry) {
 	// Stats
 	reg.Register(&StatsWaiting{})
 	reg.Register(&StatsActive{})
+
+	// Shop & Inventory (ISS-074)
+	reg.Register(&ShopBrowse{})
+	reg.Register(&ShopPurchase{})
+	reg.Register(&InventoryList{})
+	reg.Register(&EquipmentList{})
+	reg.Register(&EquipmentEquip{})
+	reg.Register(&EquipmentUnequip{})
 
 	// Game Proxy
 	reg.Register(&GameState{})
