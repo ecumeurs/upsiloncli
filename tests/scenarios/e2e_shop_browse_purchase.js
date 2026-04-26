@@ -36,7 +36,7 @@ upsilon.assertEquals(purchaseResult.credits, 800, "Credits must be 800 after buy
 // 4. Verify Inventory
 const inventory = upsilon.call("profile_inventory", {});
 upsilon.assert(inventory && inventory.length > 0, "Inventory must contain purchased item");
-const ownedArmor = inventory.find(i => i.shop_item_id === basicArmor.id);
+const ownedArmor = inventory.find(i => i.shop_item.id === basicArmor.id);
 upsilon.assert(ownedArmor, "Purchased item must exist in inventory");
 upsilon.assertEquals(ownedArmor.quantity, 1, "Inventory quantity should be 1");
 

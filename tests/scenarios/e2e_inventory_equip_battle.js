@@ -33,31 +33,40 @@ upsilon.assert(profile.characters && profile.characters.length > 0, "Bot must ha
 const charId = profile.characters[0].id;
 
 const inv = upsilon.call("profile_inventory", {});
-const invArmor = inv.find(i => i.shop_item_id === armor.id);
-const invWeapon = inv.find(i => i.shop_item_id === weapon.id);
+const invArmor = inv.find(i => i.shop_item.id === armor.id);
+const invWeapon = inv.find(i => i.shop_item.id === weapon.id);
 
-upsilon.call("character_equip", { character_id: charId, item_id: invArmor.id });
-upsilon.call("character_equip", { character_id: charId, item_id: invWeapon.id });
+upsilon.call("character_equip", { characterId: charId, item_id: invArmor.id });
+upsilon.call("character_equip", { characterId: charId, item_id: invWeapon.id });
 
 // 3. Battle
 // We only need to join and check the initial state.
 upsilon.joinWaitMatch("1v1_PVP");
 
-const board = upsilon.waitNextTurn();
-const me = upsilon.currentCharacter();
+const matchId = upsilon.getContext("match_id");
+let board = upsilon.waitNextTurn();
+if (!board) {
+    const resp = upsilon.call("game_state", { id: matchId });
+    board = resp.game_state || resp;
+}
+const myPlayer = board.players.find(p => p.is_self);
+const me = myPlayer.entities.find(e => e.id === charId);
+upsilon.assert(me, "Equipped character must be present in the match");
 
 // 4. Verify Buffs
 // In Phase 4 engine integration, equipped items are projected as Forever=true buffs.
 // We check if our entity has buffs from both item origins.
 // NOTE: properties.Armor and properties.Attack should also be boosted.
-upsilon.log(`[Bot-${agentIndex}] Checking buffs for entity ${me.id}`);
-upsilon.assert(me.buffs && me.buffs.length >= 2, "Entity should have at least 2 buffs from equipment");
+const buffs = Array.from(me.buffs || []);
 
-const armorBuff = me.buffs.find(b => b.origin_id === invArmor.id);
-const weaponBuff = me.buffs.find(b => b.origin_id === invWeapon.id);
 
-upsilon.assert(armorBuff, "Missing armor buff in engine entity");
-upsilon.assert(weaponBuff, "Missing weapon buff in engine entity");
+upsilon.assert(buffs.length >= 2, `Entity should have at least 2 buffs from equipment, found ${buffs.length}`);
+
+const armorBuff = buffs.find(b => b.origin_id === invArmor.id);
+const weaponBuff = buffs.find(b => b.origin_id === invWeapon.id);
+
+upsilon.assert(armorBuff, `Missing armor buff in engine entity (expected origin_id: ${invArmor.id})`);
+upsilon.assert(weaponBuff, `Missing weapon buff in engine entity (expected origin_id: ${invWeapon.id})`);
 upsilon.assert(armorBuff.forever, "Armor buff must be permanent (Forever=true)");
 
 upsilon.log(`[Bot-${agentIndex}] CR-23: INVENTORY EQUIP & BATTLE BUFFS PASSED.`);
