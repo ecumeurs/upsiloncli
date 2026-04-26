@@ -26,7 +26,7 @@ upsilon.call("shop_purchase", { shop_item_id: armor.id });
 const profile = upsilon.call("profile_get", {});
 const charId = profile.characters[0].id;
 const inv = upsilon.call("profile_inventory", {});
-const invArmor = inv.find(i => i.shop_item_id === armor.id);
+const invArmor = inv.find(i => i.shop_item.id === armor.id);
 
 // 2. The equip endpoint only takes item_id. The slot is inferred.
 // To test "wrong slot", we'd need an item that has NO slot or an invalid slot.
