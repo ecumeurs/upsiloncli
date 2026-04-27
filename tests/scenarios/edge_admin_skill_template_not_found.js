@@ -19,26 +19,26 @@ try {
     upsilon.call("admin_skill_template_get", { id: fakeId });
     upsilon.assert(false, "ERROR: GET non-existent template must return 404");
 } catch (e) {
-    upsilon.log(`✅ GET rejected: ${e.message}`);
-    upsilon.assert(e.message.includes("404") || e.message.toLowerCase().includes("not found"), "Must be 404");
+    upsilon.assertResponse(e, 404, "No query results for model [App\\Models\\SkillTemplate]");
 }
+
 
 // PUT non-existent
 try {
     upsilon.call("admin_skill_template_update", { id: fakeId, name: "Ghost" });
     upsilon.assert(false, "ERROR: PUT non-existent template must return 404");
 } catch (e) {
-    upsilon.log(`✅ PUT rejected: ${e.message}`);
-    upsilon.assert(e.message.includes("404") || e.message.toLowerCase().includes("not found"), "Must be 404");
+    upsilon.assertResponse(e, 404, "No query results for model [App\\Models\\SkillTemplate]");
 }
+
 
 // DELETE non-existent
 try {
     upsilon.call("admin_skill_template_delete", { id: fakeId });
     upsilon.assert(false, "ERROR: DELETE non-existent template must return 404");
 } catch (e) {
-    upsilon.log(`✅ DELETE rejected: ${e.message}`);
-    upsilon.assert(e.message.includes("404") || e.message.toLowerCase().includes("not found"), "Must be 404");
+    upsilon.assertResponse(e, 404, "No query results for model [App\\Models\\SkillTemplate]");
 }
+
 
 upsilon.log("EC: ADMIN SKILL TEMPLATE NOT FOUND PASSED.");

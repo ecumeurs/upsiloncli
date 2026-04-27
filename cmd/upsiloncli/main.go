@@ -82,7 +82,7 @@ func main() {
 		// Register endpoints
 		reg := endpoint.NewRegistry()
 		endpoint.RegisterAll(reg)
-		if !script.RunFarm(*baseURL, reg, flag.Args(), *logDir, *timeout, *quiet) {
+		if !script.RunFarm(*baseURL, reg, flag.Args(), *logDir, *timeout, *quiet, *local) {
 			os.Exit(1)
 		}
 		return

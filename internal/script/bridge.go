@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"strings"
 	"time"
+
 	"github.com/dop251/goja"
 	"github.com/ecumeurs/upsiloncli/internal/dto"
 	"github.com/ecumeurs/upsiloncli/internal/endpoint"
@@ -22,6 +24,8 @@ func (a *Agent) bindJSAPI() {
 		// New lifecycle and assertion methods
 		"onTeardown":   a.jsOnTeardown,
 		"assert":       a.jsAssert,
+		"assertResponse": a.jsAssertResponse,
+
 
 		// New Shared State Methods
 		"setShared": a.jsSetShared,
@@ -119,11 +123,14 @@ func (a *Agent) jsCall(routeName string, params map[string]interface{}) (interfa
 		// compatibility for additional debug fields.
 		envErr := map[string]interface{}{
 			"success":    false,
-			"message":    fmt.Sprintf("API Error [%s]: %s", routeName, resp.Message),
+			"message":    resp.Message,
 			"request_id": resp.RequestID,
+			"status":     resp.StatusCode,
 			"data":       nil,
 			"meta":       resp.Meta,
 		}
+
+
 		if resp.Meta != nil {
 			if v, ok := resp.Meta["error_key"]; ok {
 				envErr["error_key"] = v
@@ -207,6 +214,45 @@ func (a *Agent) jsAssert(condition bool, msg string) {
 		panic(a.VM.ToValue(fmt.Sprintf("Assertion Failed: %s", msg)))
 	}
 }
+
+// jsAssertResponse checks status and message, allowing "DEBUG MODE" prefixes locally
+func (a *Agent) jsAssertResponse(resp map[string]interface{}, expectedStatus int, expectedMessage string) {
+	status, ok := resp["status"].(int)
+
+
+
+	if !ok {
+		// Try to get from float64 if it came from JS directly
+		if s, ok := resp["status"].(float64); ok {
+			status = int(s)
+		} else {
+			panic(a.VM.ToValue("Assertion Failed: Response object missing numeric status field"))
+		}
+	}
+
+	if status != expectedStatus {
+		panic(a.VM.ToValue(fmt.Sprintf("Assertion Failed: Wrong status code (Expected: %d, Actual: %d)", expectedStatus, status)))
+	}
+
+	msg, _ := resp["message"].(string)
+	
+	// SUCCESS CONDITION:
+	// 1. Strict match
+	if msg == expectedMessage {
+		return
+	}
+
+	// 2. Local Debug Mode loose match
+	if a.IsLocal && strings.Contains(msg, "DEBUG MODE") {
+		if strings.Contains(msg, expectedMessage) {
+			return
+		}
+	}
+
+	// FAILURE
+	panic(a.VM.ToValue(fmt.Sprintf("Assertion Failed: Message mismatch (Expected: '%s', Actual: '%s')", expectedMessage, msg)))
+}
+
 
 // jsAssertEquals compares actual and expected and fails if not equal
 func (a *Agent) jsAssertEquals(actual, expected interface{}, msg string) {

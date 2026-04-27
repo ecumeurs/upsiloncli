@@ -16,14 +16,15 @@ const basePayload = {
 };
 
 const tests = [
-    { name: "Too Short (7 chars)", pass: "Short1!", expected: "too short" },
-    { name: "Exactly 14 chars", pass: "FourteenChars14!", expected: "too short" },
+    { name: "Too Short (7 chars)", pass: "Short1!", expected: "least 15" },
+    { name: "Exactly 14 chars", pass: "FourteenChars14!", expected: "least 15" },
     { name: "No Symbol", pass: "LongPasswordWithNumbers123", expected: "symbol" },
     { name: "No Uppercase", pass: "longpasswordwithnumbers123!", expected: "uppercase" },
     { name: "No Numbers", pass: "LongPasswordWithoutNumbers!", expected: "number" },
     { name: "No Symbol #2", pass: "AnotherLongPassword456", expected: "symbol" },
-    { name: "Only Special Chars", pass: "!!!!!!@#$%^&*", expected: "uppercase or number" },
+    { name: "Only Special Chars", pass: "!!!!!!@#$%^&*", expected: "uppercase" },
     { name: "Mismatch Confirmation", pass: "ValidPassword123!", confirm: "WrongPassword123!", expected: "confirmation" }
+
 ];
 
 tests.forEach(test => {
@@ -38,12 +39,10 @@ tests.forEach(test => {
         upsilon.call("auth_register", payload);
         upsilon.assert(false, `ERROR: Server accepted weak password: ${test.name}`);
     } catch (e) {
-        upsilon.log(`✅ Success: rejected ${test.name} - ${e.message}`);
-        // Verify 4xx status code for security-related errors
-        if (e.status_code) {
-            upsilon.assert(e.status_code >= 400 && e.status_code < 500, "Expected 4xx status code for invalid password");
-        }
+        upsilon.assertResponse(e, 422, test.expected);
+        upsilon.log(`✅ Success: rejected ${test.name}`);
     }
+
 });
 
 // Test valid compliant password

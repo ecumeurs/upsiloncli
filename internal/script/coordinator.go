@@ -15,7 +15,7 @@ import (
 	"github.com/ecumeurs/upsiloncli/internal/endpoint"
 )
 
-func RunFarm(baseURL string, reg *endpoint.Registry, scriptPaths []string, logDir string, timeoutSecs int, quiet bool) bool {
+func RunFarm(baseURL string, reg *endpoint.Registry, scriptPaths []string, logDir string, timeoutSecs int, quiet bool, isLocal bool) bool {
 	var wg sync.WaitGroup
 	sharedStore := NewSharedStore()
 
@@ -97,7 +97,7 @@ func RunFarm(baseURL string, reg *endpoint.Registry, scriptPaths []string, logDi
 				logger = os.Stdout
 			}
 
-			agent := NewAgent(agentID, agentIdx, len(scriptPaths), baseURL, reg, logger, sharedStore, quiet)
+			agent := NewAgent(agentID, agentIdx, len(scriptPaths), isLocal, baseURL, reg, logger, sharedStore, quiet)
 			agent.Ctx = ctx // Inject context
 			agent.Session.Set("agent_index", fmt.Sprintf("%d", agentIdx))
 			agent.Session.Set("agent_count", fmt.Sprintf("%d", len(scriptPaths)))

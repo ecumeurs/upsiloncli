@@ -47,17 +47,31 @@ upsilon.call("admin_shop_item_update", { id: created.id, available: "false" });
 upsilon.log("Item availability set to false.");
 
 // 5. Player shop browse must exclude unavailable item
-// Register a player to test the player-facing endpoint
+// Register a temporary player manually — no bootstrapBot to avoid session contamination.
+// The teardown hook from bootstrapBot would fire AFTER the admin re-login below, deleting
+// the admin account instead of the player's.
 const botId = Math.floor(Math.random() * 10000);
 const playerAccount = "shop_tester_" + botId;
-upsilon.bootstrapBot(playerAccount, "VerySecurePassword123!");
+upsilon.call("auth_register", {
+    account_name: playerAccount,
+    email: playerAccount + "@example.com",
+    nickname: "Bot_" + playerAccount,
+    password: "VerySecurePassword123!",
+    password_confirmation: "VerySecurePassword123!",
+    full_address: "Bot Street, Virtual Arena",
+    birth_date: "1990-01-01T00:00:00Z",
+});
 
 const playerShop = upsilon.call("shop_browse", {});
 const hiddenInShop = playerShop.find(i => i.id === created.id);
 upsilon.assert(!hiddenInShop, "Unavailable item must not appear in player shop browse");
 upsilon.log("Confirmed item hidden from player shop.");
 
-// 6. Admin toggles back on and deletes — must re-authenticate as admin
+// Delete temporary player while still on player session, before switching back to admin.
+upsilon.call("auth_delete", {});
+upsilon.log("Temporary player account deleted.");
+
+// 6. Admin toggles back on and deletes — re-authenticate as admin
 upsilon.call("admin_login", {
     account_name: "admin",
     password: "AdminPassword123!"
