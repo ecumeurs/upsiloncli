@@ -8,7 +8,9 @@ status: STABLE
 priority: 1
 tags: [scripting, farm, qa]
 parents: []
-dependents: []
+dependents:
+  - [[upsilonbattle:mechanic_script_lifecycle]]
+  - [[upsilonbattle:mechanic_shared_memory]]
 ---
 
 # Multi-Agent Scripting Farm
