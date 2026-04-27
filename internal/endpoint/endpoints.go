@@ -894,6 +894,19 @@ func RegisterAll(reg *Registry) {
 	reg.Register(&AdminHistory{})
 	reg.Register(&AdminPurge{})
 
+	// Admin content — skill templates (ISS-086)
+	reg.Register(&AdminSkillTemplateList{})
+	reg.Register(&AdminSkillTemplateGet{})
+	reg.Register(&AdminSkillTemplateCreate{})
+	reg.Register(&AdminSkillTemplateUpdate{})
+	reg.Register(&AdminSkillTemplateDelete{})
+
+	// Admin content — shop items (ISS-086)
+	reg.Register(&AdminShopItemList{})
+	reg.Register(&AdminShopItemCreate{})
+	reg.Register(&AdminShopItemUpdate{})
+	reg.Register(&AdminShopItemDelete{})
+
 	// Profile & Characters
 	reg.Register(&ProfileGet{})
 	reg.Register(&ProfileCharacters{})
