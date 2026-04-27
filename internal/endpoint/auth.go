@@ -68,7 +68,14 @@ type AdminLogin struct {
 
 func (e *AdminLogin) Name() string        { return "admin_login" }
 func (e *AdminLogin) Description() string { return "Authenticate as administrator and receive high-privilege JWT" }
-func (e *AdminLogin) Path() string        { return "/api/v1/admin/login" }
+func (e *AdminLogin) Path() string        { return "/api/v1/auth/admin/login" }
+
+func (e *AdminLogin) ExecuteRaw(client *api.Client, sess *session.Session, inputs map[string]string) (*api.Response, error) {
+	return client.Post(e.Path(), map[string]string{
+		"account_name": inputs["account_name"],
+		"password":     inputs["password"],
+	})
+}
 
 func (e *AdminLogin) Next() []string {
 	return []string{"admin_users", "profile_get"}

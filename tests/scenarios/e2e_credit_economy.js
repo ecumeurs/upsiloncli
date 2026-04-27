@@ -64,8 +64,17 @@ while (!attacked && rounds < MAX_ROUNDS) {
             entity_id: me.id,
             target_coords: [foe.position]
         });
-        const foeHpAfter = (result && result.hp != null) ? result.hp : foeHpBefore;
-        myDamageDealt = Math.max(0, foeHpBefore - foeHpAfter);
+        
+        let foeHpAfter = foeHpBefore;
+        if (result && result.results && result.results.length > 0) {
+            // Find the result for our target
+            const targetResult = result.results.find(r => r.target_id === foe.id);
+            if (targetResult) {
+                foeHpAfter = targetResult.new_hp;
+                myDamageDealt = targetResult.damage || 0;
+            }
+        }
+        
         attacked = true;
         upsilon.log(`[Bot-${agentIndex}] Attacked ${foe.name} for ${myDamageDealt} damage (${foeHpBefore} → ${foeHpAfter})`);
     } else {
