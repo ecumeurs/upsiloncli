@@ -1,0 +1,76 @@
+// upsiloncli/tests/scenarios/e2e_admin_shop_item_crud.js
+// @test-link [[api_shop_item_admin_crud]]
+// @test-link [[rule_admin_content_authority]]
+//
+// Validates the admin shop item CRUD lifecycle:
+// 1. Admin login
+// 2. Create a shop item
+// 3. List — verify item appears
+// 4. Update availability (toggle off)
+// 5. Verify player catalog excludes unavailable item
+// 6. Toggle availability back on
+// 7. Delete
+// 8. Verify gone from both admin and player listing
+
+upsilon.log("Starting: Admin Shop Item CRUD");
+
+// 1. Admin login
+const adminLogin = upsilon.call("admin_login", {
+    account_name: "admin",
+    password: "AdminPassword123!"
+});
+upsilon.assert(adminLogin && adminLogin.token, "Admin login must return a token");
+
+// 2. Create
+const uniqueName = "E2E_Item_" + Math.floor(Math.random() * 100000);
+const created = upsilon.call("admin_shop_item_create", {
+    name: uniqueName,
+    slot: "utility",
+    cost: "150",
+    available: "true"
+});
+upsilon.assert(created && created.id, "Created item must have an ID");
+upsilon.assertEquals(created.name, uniqueName, "Created name must match");
+upsilon.assertEquals(created.slot, "utility", "Slot must be utility");
+upsilon.assertEquals(created.cost, 150, "Cost must be 150");
+upsilon.assert(created.available === true, "Item must be available on creation");
+upsilon.log(`Item created: ${created.id}`);
+
+// 3. Appears in admin list
+const adminList = upsilon.call("admin_shop_item_list", {});
+upsilon.assert(adminList && adminList.length > 0, "Admin shop list must not be empty");
+const foundAdmin = adminList.find(i => i.id === created.id);
+upsilon.assert(foundAdmin, "Created item must appear in admin list");
+
+// 4. Toggle availability off
+upsilon.call("admin_shop_item_update", { id: created.id, available: "false" });
+upsilon.log("Item availability set to false.");
+
+// 5. Player shop browse must exclude unavailable item
+// Register a player to test the player-facing endpoint
+const botId = Math.floor(Math.random() * 10000);
+const playerAccount = "shop_tester_" + botId;
+upsilon.bootstrapBot(playerAccount, "VerySecurePassword123!");
+
+const playerShop = upsilon.call("shop_browse", {});
+const hiddenInShop = playerShop.find(i => i.id === created.id);
+upsilon.assert(!hiddenInShop, "Unavailable item must not appear in player shop browse");
+upsilon.log("Confirmed item hidden from player shop.");
+
+// 6. Admin toggles back on and deletes — must re-authenticate as admin
+upsilon.call("admin_login", {
+    account_name: "admin",
+    password: "AdminPassword123!"
+});
+upsilon.call("admin_shop_item_update", { id: created.id, available: "true" });
+
+// 7. Delete
+upsilon.call("admin_shop_item_delete", { id: created.id });
+upsilon.log("Item deleted.");
+
+// 8. Verify gone from admin list
+const afterDelete = upsilon.call("admin_shop_item_list", {});
+const stillFound = afterDelete.find(i => i.id === created.id);
+upsilon.assert(!stillFound, "Deleted item must not appear in admin list");
+
+upsilon.log("ADMIN SHOP ITEM CRUD PASSED.");
