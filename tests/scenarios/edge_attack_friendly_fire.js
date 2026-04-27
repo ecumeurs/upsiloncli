@@ -46,7 +46,7 @@ while (!done && rounds < 60) {
             upsilon.assert(false, "ERROR: Friendly fire accepted!");
         } catch (e) {
             upsilon.log(`[Bot-${agentIndex}] ✅ Friendly fire rejected: ${e.message} (key=${e.error_key})`);
-            upsilon.assertEquals(e.error_key, "rule.friendly_fire", "Expected rule.friendly_fire");
+            upsilon.jsAssertEquals("entity.attack.friendlyfire", e.error_key, "Expected entity.attack.friendlyfire");
         }
         done = true;
     } else {
