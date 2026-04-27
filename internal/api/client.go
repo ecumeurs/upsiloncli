@@ -163,3 +163,13 @@ func (c *Client) Post(path string, body interface{}) (*Response, error) {
 func (c *Client) Delete(path string) (*Response, error) {
 	return c.Do("DELETE", path, nil)
 }
+
+// Put is a convenience wrapper for PUT requests.
+func (c *Client) Put(path string, body interface{}) (*Response, error) {
+	return c.Do("PUT", path, body)
+}
+
+// Patch is a convenience wrapper for PATCH requests.
+func (c *Client) Patch(path string, body interface{}) (*Response, error) {
+	return c.Do("PATCH", path, body)
+}
