@@ -18,6 +18,7 @@ type Agent struct {
 	ID           string
 	AgentIndex   int
 	AgentCount   int
+	IsLocal      bool
 	Session      *session.Session
 	Display      *display.Printer
 	Client       *api.Client
@@ -42,7 +43,7 @@ type eventEnvelope struct {
 	Data interface{}
 }
 
-func NewAgent(id string, agentIdx, agentCount int, baseURL string, reg *endpoint.Registry, logger io.Writer, shared *SharedStore, quiet bool) *Agent {
+func NewAgent(id string, agentIdx, agentCount int, isLocal bool, baseURL string, reg *endpoint.Registry, logger io.Writer, shared *SharedStore, quiet bool) *Agent {
 	sess := session.New()
 	printer := display.NewPrinterWithWriter(logger).
 		WithPrefix(fmt.Sprintf("[%s] ", id)).
@@ -53,6 +54,7 @@ func NewAgent(id string, agentIdx, agentCount int, baseURL string, reg *endpoint
 		ID:             id,
 		AgentIndex:     agentIdx,
 		AgentCount:     agentCount,
+		IsLocal:        isLocal,
 		Session:        sess,
 		Display:        printer,
 		Client:         client,
@@ -64,6 +66,7 @@ func NewAgent(id string, agentIdx, agentCount int, baseURL string, reg *endpoint
 		eventQueue:     make(chan eventEnvelope, 100),
 		eventCallbacks: make(map[string][]goja.Callable),
 	}
+
 
 	// Register WebSocket hook
 	agent.Listener.AddHook(func(name string, data interface{}) {

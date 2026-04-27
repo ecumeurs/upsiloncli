@@ -31,16 +31,10 @@ try {
     });
     upsilon.assert(false, "ERROR: Wrong password login was accepted!");
 } catch (e) {
-    upsilon.log(`[Bot-${agentIndex}] ✅ Wrong password properly rejected: ${e.message}`);
-    // Verify 401 Unauthorized status code
-    if (e.status_code) {
-        upsilon.assertEquals(e.status_code, 401, "Expected 401 Unauthorized for wrong password");
-    }
-    // Verify no token issued
-    if (e.token === undefined || e.token === null) {
-        upsilon.log(`[Bot-${agentIndex}] ✅ No token issued for invalid login`);
-    }
+    upsilon.assertResponse(e, 401, "Invalid credentials.");
+    upsilon.log(`[Bot-${agentIndex}] ✅ Wrong password properly rejected`);
 }
+
 
 // 3. Test login with wrong account name
 upsilon.log(`[Bot-${agentIndex}] Attempting login with wrong account name...`);
@@ -51,11 +45,10 @@ try {
     });
     upsilon.assert(false, "ERROR: Wrong account name login was accepted!");
 } catch (e) {
-    upsilon.log(`[Bot-${agentIndex}] ✅ Wrong account name properly rejected: ${e.message}`);
-    if (e.status_code) {
-        upsilon.assertEquals(e.status_code, 401, "Expected 401 Unauthorized for wrong account");
-    }
+    upsilon.assertResponse(e, 401, "Invalid credentials.");
+    upsilon.log(`[Bot-${agentIndex}] ✅ Wrong account name properly rejected`);
 }
+
 
 // 4. Verify correct credentials still work
 upsilon.log(`[Bot-${agentIndex}] Attempting login with correct credentials...`);
