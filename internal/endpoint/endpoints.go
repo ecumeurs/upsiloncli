@@ -925,6 +925,17 @@ func RegisterAll(reg *Registry) {
 	reg.Register(&GameAction{})
 	reg.Register(&GameForfeit{})
 
+	// Skill templates (ISS-086)
+	reg.Register(&SkillTemplateList{})
+	reg.Register(&SkillTemplateGet{})
+
+	// Character skill inventory (ISS-073)
+	reg.Register(&CharacterSkillList{})
+	reg.Register(&SkillRoll{})
+	reg.Register(&SkillEquip{})
+	reg.Register(&SkillUnequip{})
+	reg.Register(&SkillInspect{})
+
 	// Leaderboard
 	reg.Register(&LeaderboardGet{})
 
