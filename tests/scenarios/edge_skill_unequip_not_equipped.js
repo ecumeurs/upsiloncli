@@ -26,10 +26,7 @@ try {
     upsilon.assert(false, "ERROR: Unequipping a non-equipped skill must be rejected");
 } catch (e) {
     upsilon.log(`[Bot-${agentIndex}] ✅ Unequip of non-equipped skill rejected: ${e.message}`);
-    upsilon.assert(
-        e.message.includes("422") || e.message.includes("400"),
-        "Must be 422 Unprocessable or 400"
-    );
+    upsilon.assertResponse(e, 422, "Skill is not currently equipped.");
 }
 
 upsilon.log(`[Bot-${agentIndex}] EC: UNEQUIP NOT EQUIPPED PASSED.`);

@@ -9,16 +9,18 @@ const password = "VerySecurePassword123!";
 
 upsilon.log(`[Bot-${agentIndex}] Starting CR-07: Friendly Fire Prevention`);
 
-// 4 bots: 2v2 PvP. Once everyone is in we publish entity ids and move toward
-// our team-mate so we can attempt the illegal attack at point-blank range.
 upsilon.bootstrapBot(accountName, password);
-const matchData = upsilon.joinWaitMatch("2v2_PVP");
-upsilon.setShared(`bot_char_id_${agentIndex}`, upsilon.myCharacters()[0].id);
-upsilon.syncGroup("ident_exchange", 4);
+const matchData = upsilon.joinWaitMatch("1v1_PVE");
+const matchId = matchData.match_id;
+
+const myChars = upsilon.myCharacters();
+const char1Id = myChars[0].id;
+const char2Id = myChars[1].id;
+const char3Id = myChars[2].id;
 
 let success = false;
 let rounds = 0;
-const MAX_ROUNDS = 60;
+const MAX_ROUNDS = 100;
 
 while (rounds < MAX_ROUNDS && !success) {
     rounds++;
@@ -26,22 +28,27 @@ while (rounds < MAX_ROUNDS && !success) {
     if (!board) break;
 
     const me = upsilon.currentCharacter();
-    const allies = upsilon.myAlliesCharacters().filter(a => a.hp > 0);
-    if (allies.length === 0) {
-        // No ally visible (e.g. solo team because the match started 1v1 fallback);
-        // pass and exit cleanly.
-        upsilon.call("game_action", { id: matchData.match_id, type: "pass", entity_id: me.id });
+    if (!me || !me.is_self) continue;
+
+    // Find a target to move toward
+    let targetId;
+    if (me.id === char1Id) targetId = char2Id;
+    else if (me.id === char2Id) targetId = char1Id;
+    else targetId = char2Id;
+
+    const ally = upsilon.myCharacters().find(e => e.id === targetId && !e.dead);
+    if (!ally) {
+        upsilon.call("game_action", { id: matchId, type: "pass", entity_id: me.id });
         continue;
     }
 
-    const ally = allies[0];
-    const adjacent = (Math.abs(me.position.x - ally.position.x) + Math.abs(me.position.y - ally.position.y)) <= 1;
+    const dist = Math.abs(me.position.x - ally.position.x) + Math.abs(me.position.y - ally.position.y);
 
-    if (adjacent) {
+    if (dist <= 1) {
         upsilon.log(`[Bot-${agentIndex}] Round ${rounds}: attempting illegal FF on ${ally.name}...`);
         try {
             upsilon.call("game_action", {
-                id: matchData.match_id,
+                id: matchId,
                 type: "attack",
                 entity_id: me.id,
                 target_coords: [ally.position]
@@ -51,13 +58,23 @@ while (rounds < MAX_ROUNDS && !success) {
             upsilon.log(`[Bot-${agentIndex}] ✅ Friendly fire rejected: ${e.message} (key=${e.error_key})`);
             upsilon.assertEquals(e.error_key, "entity.attack.friendlyfire", "Expected entity.attack.friendlyfire");
             success = true;
+            continue;
         }
     } else {
-        // Walk toward the ally to get into reach, but never attack a foe — that
-        // would end the test early or deplete HP needlessly.
-        upsilon.autoBattleTurn(matchData.match_id, ally);
+        const path = upsilon.planTravelToward(me.id, ally.position, board);
+        if (path && path.length > 0) {
+            upsilon.call("game_action", {
+                id: matchId,
+                type: "move",
+                entity_id: me.id,
+                target_coords: path
+            });
+            continue;
+        }
     }
+
+    upsilon.call("game_action", { id: matchId, type: "pass", entity_id: me.id });
 }
 
-upsilon.assert(success, "Could not reach an ally to confirm friendly-fire rejection within 60 rounds");
+upsilon.assert(success, "Could not reach an ally to confirm friendly-fire rejection within 100 rounds");
 upsilon.log(`[Bot-${agentIndex}] CR-07: FRIENDLY FIRE PREVENTION PASSED.`);

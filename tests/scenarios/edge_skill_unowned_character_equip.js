@@ -26,10 +26,7 @@ try {
     upsilon.assert(false, "ERROR: Equipping on another player's character must be rejected");
 } catch (e) {
     upsilon.log(`[Bot-${agentIndex}] ✅ Equip on foreign character rejected: ${e.message}`);
-    upsilon.assert(
-        e.message.includes("403") || e.message.includes("404"),
-        "Must be 403 Forbidden or 404"
-    );
+    upsilon.assertResponse(e, 403, "unauthorized");
 }
 
 upsilon.log(`[Bot-${agentIndex}] EC: SKILL EQUIP UNOWNED CHARACTER PASSED.`);

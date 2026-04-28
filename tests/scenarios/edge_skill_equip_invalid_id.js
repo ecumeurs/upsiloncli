@@ -22,10 +22,7 @@ try {
     upsilon.assert(false, "ERROR: Equipping a non-existent skill must be rejected");
 } catch (e) {
     upsilon.log(`[Bot-${agentIndex}] ✅ Equip with invalid skill ID rejected: ${e.message}`);
-    upsilon.assert(
-        e.message.includes("404") || e.message.includes("422") || e.message.includes("403"),
-        "Must be 404, 422, or 403"
-    );
+    upsilon.assertResponse(e, 404, "No query results for model");
 }
 
 upsilon.log(`[Bot-${agentIndex}] EC: SKILL EQUIP INVALID ID PASSED.`);

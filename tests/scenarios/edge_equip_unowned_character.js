@@ -8,14 +8,14 @@ const botId = Math.floor(Math.random() * 10000) + "_" + agentIndex;
 
 // User A: The Victim
 const accountA = "victim_char_" + botId;
-const passA = "Pass123!";
+const passA = "VerySecurePassword123!";
 upsilon.bootstrapBot(accountA, passA);
 const profileA = upsilon.call("profile_get", {});
 const charA = profileA.characters[0].id;
 
 // User B: The Hacker
 const accountB = "hacker_char_" + botId;
-const passB = "Pass123!";
+const passB = "VerySecurePassword123!";
 upsilon.bootstrapBot(accountB, passB);
 const items = upsilon.call("shop_browse", {});
 const armor = items.find(i => i.slot === "armor");

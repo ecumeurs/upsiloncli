@@ -37,12 +37,34 @@ while (!rejected && rounds < 60) {
             target_coords: [foe.position]
         });
 
+        // Find a valid adjacent tile to move to (not current, not obstacle, not occupied)
+        let moveTarget = null;
+        const candidates = [
+            { x: me.position.x + 1, y: me.position.y },
+            { x: me.position.x - 1, y: me.position.y },
+            { x: me.position.x, y: me.position.y + 1 },
+            { x: me.position.x, y: me.position.y - 1 }
+        ];
+
+        for (const cand of candidates) {
+            const cell = upsilon.cellAt(board, cand.x, cand.y);
+            if (cell && !cell.obstacle && !cell.entity_id) {
+                moveTarget = cand;
+                break;
+            }
+        }
+
+        if (!moveTarget) {
+            upsilon.log(`[Bot-${agentIndex}] WARNING: No valid adjacent tile found to test movement-after-attack. Skipping this turn.`);
+            continue;
+        }
+
         try {
             upsilon.call("game_action", {
                 id: matchData.match_id,
                 type: "move",
                 entity_id: me.id,
-                target_coords: [{ x: me.position.x, y: me.position.y }]
+                target_coords: [moveTarget]
             });
             upsilon.assert(false, "ERROR: Move after attack accepted");
         } catch (e) {
