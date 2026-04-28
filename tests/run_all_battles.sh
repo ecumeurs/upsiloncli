@@ -37,7 +37,7 @@ run_test() {
     export UPSILON_GAME_MODE="$mode"
 
     # Cleanup state before every run to ensure isolation
-    cd .. && ./zombie_killer.sh && ./clear_matches.sh && cd upsiloncli
+    cd .. && ./scripts/zombie_killer.sh && ./scripts/clear_matches.sh && cd upsiloncli
 
     # Run the farm and capture output
     echo "Running arena..."

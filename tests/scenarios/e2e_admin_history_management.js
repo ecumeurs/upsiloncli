@@ -11,13 +11,8 @@
 
 upsilon.log("Starting E2E Admin History Management Verification");
 
-try {
-    upsilon.log("Logging in as Admin...");
-    upsilon.call("admin_login", {
-        account_name: "admin",
-        password: "AdminPassword123!" // Seeded value in .env.ci
-    });
-
+// @spec-link [[mech_script_admin_section]]
+upsilon.adminSection(() => {
     // 1. Fetch History
     upsilon.log("1. Fetching Match History Archive...");
     const history = upsilon.call("admin_history", {});
@@ -41,9 +36,6 @@ try {
     if (purgeResp.purged_count !== undefined) {
         upsilon.log(`Purged count: ${purgeResp.purged_count}`);
     }
+});
 
-    upsilon.log("SUCCESS: ADMIN HISTORY MANAGEMENT VERIFIED.");
-} catch (e) {
-    upsilon.log("❌ FAILED: Admin History Error: " + e.message);
-    upsilon.assert(false, "History verification failed");
-}
+upsilon.log("SUCCESS: ADMIN HISTORY MANAGEMENT VERIFIED.");

@@ -24,14 +24,12 @@ run_scenario() {
     local name=$(basename "$script" .js)
     local log_file="$LOG_DIR/${name}.log"
     
-    # Determine agent count (default 1, check if pvp or coordinate scripts)
+    # Determine agent count from _with_N filename suffix (canonical convention).
     local agents=1
-    if [[ "$name" == *"pvp"* ]] || [[ "$name" == *"coordination"* ]] || [[ "$name" == *"combat"* ]] || [[ "$name" == *"friendly_fire"* ]] || [[ "$name" == *"resolution_standard"* ]] || [[ "$name" == *"progression_constraints"* ]] || [[ "$name" == *"credit_economy"* ]]; then
-        agents=2
-    fi
-    
-    if [[ "$name" == *"2v2"* ]]; then
+    if [[ "$name" == *"_with_4"* ]] || [[ "$name" == *"2v2"* ]]; then
         agents=4
+    elif [[ "$name" == *"_with_2"* ]]; then
+        agents=2
     fi
 
     echo -n "Running $name (Agents: $agents)... "

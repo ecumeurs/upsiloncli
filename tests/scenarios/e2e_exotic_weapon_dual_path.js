@@ -18,36 +18,37 @@
 upsilon.log("Starting: D11 Dual-Path — Exotic Weapon (Buff + Skill)");
 
 // 1. Admin setup
-const adminLogin = upsilon.call("admin_login", {
-    account_name: "admin",
-    password: "AdminPassword123!"
-});
-upsilon.assert(adminLogin && adminLogin.token, "Admin login must succeed");
+// @spec-link [[mech_script_admin_section]]
+let weaponItemId, templateId;
 
-const uniqueSkillName = "ExoticBlade_Skill_" + Math.floor(Math.random() * 100000);
-const template = upsilon.call("admin_skill_template_create", {
-    name: uniqueSkillName,
-    behavior: "Counter",
-    grade: "IV",
-    weight_positive: "12",
-    weight_negative: "4",
-    available: "true"
-});
-upsilon.assert(template && template.id, "Skill template must be created");
-upsilon.log(`Skill template: ${template.id}`);
+upsilon.adminSection(() => {
+    const uniqueSkillName = "ExoticBlade_Skill_" + Math.floor(Math.random() * 100000);
+    const template = upsilon.call("admin_skill_template_create", {
+        name: uniqueSkillName,
+        behavior: "Counter",
+        grade: "IV",
+        weight_positive: "12",
+        weight_negative: "4",
+        available: "true"
+    });
+    upsilon.assert(template && template.id, "Skill template must be created");
+    upsilon.log(`Skill template: ${template.id}`);
+    templateId = template.id;
 
-// 2. Exotic weapon — property grants buff, skill_template_id grants skill
-const uniqueWeaponName = "ExoticBlade_" + Math.floor(Math.random() * 100000);
-const weaponItem = upsilon.call("admin_shop_item_create", {
-    name: uniqueWeaponName,
-    slot: "weapon",
-    cost: "200",
-    available: "true",
-    properties_json: '{"WeaponBaseDamage": 20}',
-    skill_template_id: template.id
+    // 2. Exotic weapon — property grants buff, skill_template_id grants skill
+    const uniqueWeaponName = "ExoticBlade_" + Math.floor(Math.random() * 100000);
+    const weaponItem = upsilon.call("admin_shop_item_create", {
+        name: uniqueWeaponName,
+        slot: "weapon",
+        cost: "200",
+        available: "true",
+        properties: { WeaponBaseDamage: 20 },
+        skill_template_id: template.id
+    });
+    upsilon.assert(weaponItem && weaponItem.id, "Exotic weapon must be created");
+    upsilon.log(`Exotic weapon: ${weaponItem.id} ("${weaponItem.name}")`);
+    weaponItemId = weaponItem.id;
 });
-upsilon.assert(weaponItem && weaponItem.id, "Exotic weapon must be created");
-upsilon.log(`Exotic weapon: ${weaponItem.id} ("${weaponItem.name}")`);
 
 // 3. Player purchases and equips
 const botId = Math.floor(Math.random() * 10000);
@@ -58,7 +59,7 @@ const profile = upsilon.call("profile_get", {});
 upsilon.assert(profile.characters && profile.characters.length > 0, "Player must have a character");
 const charId = profile.characters[0].id;
 
-const purchase = upsilon.call("shop_purchase", { shop_item_id: weaponItem.id });
+const purchase = upsilon.call("shop_purchase", { shop_item_id: weaponItemId });
 upsilon.assert(purchase && purchase.inventory_item, "Purchase must return inventory item");
 const invItemId = purchase.inventory_item.id;
 
@@ -94,8 +95,9 @@ upsilon.log(`[D11] Attack buff from weapon confirmed (origin_id: ${invItemId})`)
 upsilon.log(`[D11] Skill from template confirmed — bridge registered without error.`);
 
 // Cleanup
-upsilon.call("admin_login", { account_name: "admin", password: "AdminPassword123!" });
-upsilon.call("admin_shop_item_delete", { id: weaponItem.id });
-upsilon.call("admin_skill_template_delete", { id: template.id });
+upsilon.adminSection(() => {
+    upsilon.call("admin_shop_item_delete", { id: weaponItemId });
+    upsilon.call("admin_skill_template_delete", { id: templateId });
+});
 
 upsilon.log("D11 DUAL-PATH — EXOTIC WEAPON PASSED.");

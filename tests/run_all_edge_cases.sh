@@ -24,10 +24,11 @@ run_test() {
     local name=$(basename "$script" .js)
     local log_file="$LOG_DIR/${name}.log"
     
-    # Determine agent count
-    # Most edge cases are 1 agent, but some validation requires coordination
+    # Determine agent count from _with_N filename suffix (canonical convention).
     local agents=1
-    if [[ "$name" == *"pvp"* ]] || [[ "$name" == *"coordination"* ]] || [[ "$name" == *"combat"* ]] || [[ "$name" == *"friendly_fire"* ]] || [[ "$name" == *"out_of_turn"* ]]; then
+    if [[ "$name" == *"_with_4"* ]]; then
+        agents=4
+    elif [[ "$name" == *"_with_2"* ]]; then
         agents=2
     fi
 
