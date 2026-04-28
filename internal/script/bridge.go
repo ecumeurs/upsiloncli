@@ -141,10 +141,11 @@ func (a *Agent) jsCall(routeName string, params map[string]interface{}) (interfa
 
 	// PROACTIVE TURN MEMORY: If an attack was successful, mark it immediately
 	if routeName == "game_action" {
-		actionType, _ := params["type"].(string)
-		actorID, _ := params["entity_id"].(string)
-		if actionType == "attack" && actorID == a.currentTurnEntityID {
-			a.hasAttackedThisTurn = true
+		if resp.Success {
+			at := params["type"]
+			if at == "attack" || at == "skill" {
+				a.hasAttackedThisTurn = true
+			}
 		}
 	}
 
@@ -1005,7 +1006,7 @@ func (a *Agent) jsWaitNextTurn() interface{} {
 				a.currentTurnEntityID = board.CurrentEntityID
 				a.hasAttackedThisTurn = false
 			}
-			if board.Action != nil && board.Action.Type == "attack" && board.Action.ActorID == a.currentTurnEntityID {
+			if board.Action != nil && (board.Action.Type == "attack" || board.Action.Type == "skill") && board.Action.ActorID == a.currentTurnEntityID {
 				a.hasAttackedThisTurn = true
 			}
 
@@ -1063,7 +1064,7 @@ func (a *Agent) jsWaitNextTurn() interface{} {
 			}
 
 			// Watch for attack actions to set the flag
-			if board.Action != nil && board.Action.Type == "attack" && board.Action.ActorID == a.currentTurnEntityID {
+			if board.Action != nil && (board.Action.Type == "attack" || board.Action.Type == "skill") && board.Action.ActorID == a.currentTurnEntityID {
 				a.hasAttackedThisTurn = true
 			}
 

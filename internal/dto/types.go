@@ -1,6 +1,9 @@
 package dto
 
-import "time"
+import (
+	"encoding/json"
+	"time"
+)
 
 // Position represents 2D coordinates.
 type Position struct {
@@ -10,18 +13,71 @@ type Position struct {
 
 // Entity represents a tactical unit on the board.
 type Entity struct {
-	ID       string   `json:"id"`
-	PlayerID string   `json:"player_id,omitempty"` // Player ID is masked in some responses
-	Team     int      `json:"team"`
-	Name     string   `json:"name"`
-	HP       int      `json:"hp"`
-	MaxHP    int      `json:"max_hp"`
-	Attack   int      `json:"attack"`
-	Defense  int      `json:"defense"`
-	Move     int      `json:"move"`
-	MaxMove  int      `json:"max_move"`
-	Position Position `json:"position"`
-	IsSelf   bool     `json:"is_self"`
+	ID             string          `json:"id"`
+	PlayerID       string          `json:"player_id,omitempty"` // Player ID is masked in some responses
+	Team           int             `json:"team"`
+	Name           string          `json:"name"`
+	HP             int             `json:"hp"`
+	MaxHP          int             `json:"max_hp"`
+	Attack         int             `json:"attack"`
+	Defense        int             `json:"defense"`
+	Move           int             `json:"move"`
+	MaxMove        int             `json:"max_move"`
+	Position       Position        `json:"position"`
+	EquippedItems  []EquippedItem  `json:"equipped_items"`
+	Buffs          []Buff          `json:"buffs"`
+	EquippedSkills []EquippedSkill `json:"equipped_skills"`
+	IsSelf         bool            `json:"is_self"`
+	Dead           bool            `json:"dead"`
+}
+
+// Flex handles inconsistent JSON where an empty object might be represented as an empty array [].
+type Flex[T any] struct {
+	Data T
+}
+
+func (f *Flex[T]) UnmarshalJSON(data []byte) error {
+	if string(data) == "[]" {
+		return nil
+	}
+	return json.Unmarshal(data, &f.Data)
+}
+
+func (f Flex[T]) MarshalJSON() ([]byte, error) {
+	return json.Marshal(f.Data)
+}
+
+type PropertyDTO struct {
+	Value  *int     `json:"value,omitempty"`
+	FValue *float64 `json:"fvalue,omitempty"`
+	Max    *int     `json:"max,omitempty"`
+	BValue *bool    `json:"bvalue,omitempty"`
+	SValue *string  `json:"svalue,omitempty"`
+}
+
+type PropertyMap = map[string]PropertyDTO
+
+type EquippedSkill struct {
+	SkillID   string            `json:"skill_id"`
+	Name      string            `json:"name"`
+	Behavior  string            `json:"behavior"`
+	Targeting Flex[PropertyMap] `json:"targeting"`
+	Costs     Flex[PropertyMap] `json:"costs"`
+	Effect    Flex[PropertyMap] `json:"effect"`
+	Origin    string            `json:"origin,omitempty"`
+}
+
+type Buff struct {
+	OriginID   string            `json:"origin_id"`
+	Forever    bool              `json:"forever"`
+	Properties Flex[PropertyMap] `json:"properties"`
+}
+
+type EquippedItem struct {
+	ItemID     string            `json:"item_id"`
+	Name       string            `json:"name"`
+	Slot       string            `json:"slot"`
+	Properties Flex[PropertyMap] `json:"properties"`
 }
 
 // Cell is the topmost cell at a (x, y) column. Caves/underground are not
