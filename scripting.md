@@ -51,8 +51,11 @@ Characters exposed via `upsilon.currentCharacter()` or `upsilon.myCharacters()` 
 - **`hp` / `max_hp`**: Unit health.
 - **`move` / `max_move`**: Remaining and total movement points.
 - **`position`**: Current `{x, y}` coordinates.
-- **`has_attacked`**: (NEW) Boolean indicating if the unit has already performed an attack in the current turn.
+- **`has_attacked`**: Boolean indicating if the unit has performed an attack or used a skill in the current turn.
 - **`dead`**: True if eliminated.
+- **`equipped_skills`**: Array of skills (e.g., `[{ skill_id, name, behavior, targeting, costs, effect }]`).
+- **`equipped_items`**: Array of items (e.g., `[{ item_id, name, slot, properties }]`).
+- **`buffs`**: Array of active status effects.
 
 #### Tactical Constraints
 - **Attack ends Movement**: Once a unit attacks (`has_attacked` is true), the `upsilon.planTravelToward()` helper will automatically return an empty array, and further "move" actions will be rejected by the engine.
@@ -132,7 +135,7 @@ These routes are available via `upsilon.call(route_name, params)`.
 | **`matchmaking_status`** | GET | `/api/v1/matchmaking/status` | Poll queue status | - |
 | **`matchmaking_leave`** | DELETE | `/api/v1/matchmaking/leave` | Leave the queue | - |
 | **`game_state`** | GET | `/api/v1/game/{id}` | Get board state | `id` (match_id) |
-| **`game_action`** | POST | `/api/v1/game/{id}/action` | Move or Attack | `id`, `entity_id`, `type` (move/attack/pass), `target_coords` (x,y) |
+| **`game_action`** | POST | `/api/v1/game/{id}/action` | Move, Attack, or Skill | `id`, `entity_id`, `type` (move/attack/pass/skill), `target_coords` (x,y), `skill_id` (Optional) |
 | **`game_forfeit`** | POST | `/api/v1/game/{id}/forfeit` | Concede the match | `id` |
 | **`leaderboard`** | GET | `/api/v1/leaderboard` | Get rankings | `mode` (1v1_PVP, etc) |
 | **`admin_login`** | POST | `/api/v1/auth/admin/login` | (Admin Only) Administrative auth | `account_name`, `password` |

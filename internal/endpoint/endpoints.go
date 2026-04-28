@@ -684,8 +684,9 @@ func (e *GameAction) Params() []Param {
 	return []Param{
 		{Name: "id", Hint: "match UUID", Required: true, ContextKey: "match_id"},
 		{Name: "entity_id", Hint: "acting entity UUID", Required: true, ContextKey: "current_entity_id"},
-		{Name: "type", Hint: "move|attack|pass", Required: true},
+		{Name: "type", Hint: "move|attack|pass|skill", Required: true},
 		{Name: "target_coords", Hint: "x,y coordinates (e.g. 3,2;4,2) semicolon-separated path"},
+		{Name: "skill_id", Hint: "skill UUID (required for type=skill)"},
 	}
 }
 
@@ -700,6 +701,10 @@ func (e *GameAction) ExecuteRaw(client *api.Client, sess *session.Session, input
 		"player_id": inputs["player_id"],
 		"entity_id": inputs["entity_id"],
 		"type":      inputs["type"],
+	}
+
+	if sid := inputs["skill_id"]; sid != "" {
+		body["skill_id"] = sid
 	}
 
 	// Parse target_coords "x,y" into [{x, y}] OR JSON Array
