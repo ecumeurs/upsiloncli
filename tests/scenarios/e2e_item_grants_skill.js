@@ -13,36 +13,37 @@
 
 upsilon.log("Starting: D11 — Item Grants Skill at Arena Init");
 
-// 1. Admin creates skill template
-const adminLogin = upsilon.call("admin_login", {
-    account_name: "admin",
-    password: "AdminPassword123!"
-});
-upsilon.assert(adminLogin && adminLogin.token, "Admin login must succeed");
+// 1. Admin creates skill template and exotic shop item
+// @spec-link [[mech_script_admin_section]]
+let shopItemId, templateId;
 
-const uniqueSkillName = "ExoticSkill_" + Math.floor(Math.random() * 100000);
-const template = upsilon.call("admin_skill_template_create", {
-    name: uniqueSkillName,
-    behavior: "Passive",
-    grade: "III",
-    weight_positive: "10",
-    weight_negative: "1",
-    available: "true"
-});
-upsilon.assert(template && template.id, "Skill template must be created");
-upsilon.log(`Skill template created: ${template.id} ("${template.name}")`);
+upsilon.adminSection(() => {
+    const uniqueSkillName = "ExoticSkill_" + Math.floor(Math.random() * 100000);
+    const template = upsilon.call("admin_skill_template_create", {
+        name: uniqueSkillName,
+        behavior: "Passive",
+        grade: "III",
+        weight_positive: "10",
+        weight_negative: "1",
+        available: "true"
+    });
+    upsilon.assert(template && template.id, "Skill template must be created");
+    upsilon.log(`Skill template created: ${template.id} ("${template.name}")`);
+    templateId = template.id;
 
-// 2. Admin creates exotic shop item linked to the template
-const uniqueItemName = "ExoticAmulet_" + Math.floor(Math.random() * 100000);
-const shopItem = upsilon.call("admin_shop_item_create", {
-    name: uniqueItemName,
-    slot: "utility",
-    cost: "100",
-    available: "true",
-    skill_template_id: template.id
+    // 2. Admin creates exotic shop item linked to the template
+    const uniqueItemName = "ExoticAmulet_" + Math.floor(Math.random() * 100000);
+    const shopItem = upsilon.call("admin_shop_item_create", {
+        name: uniqueItemName,
+        slot: "utility",
+        cost: "100",
+        available: "true",
+        skill_template_id: template.id
+    });
+    upsilon.assert(shopItem && shopItem.id, "Exotic shop item must be created");
+    upsilon.log(`Exotic shop item created: ${shopItem.id} ("${shopItem.name}")`);
+    shopItemId = shopItem.id;
 });
-upsilon.assert(shopItem && shopItem.id, "Exotic shop item must be created");
-upsilon.log(`Exotic shop item created: ${shopItem.id} ("${shopItem.name}")`);
 
 // 3. Player setup — purchase and equip the exotic item
 const botId = Math.floor(Math.random() * 10000);
@@ -53,7 +54,7 @@ const profile = upsilon.call("profile_get", {});
 upsilon.assert(profile.characters && profile.characters.length > 0, "Player must have a character");
 const charId = profile.characters[0].id;
 
-const purchase = upsilon.call("shop_purchase", { shop_item_id: shopItem.id });
+const purchase = upsilon.call("shop_purchase", { shop_item_id: shopItemId });
 upsilon.assert(purchase && purchase.inventory_item, "Purchase must return an inventory item");
 const invItemId = purchase.inventory_item.id;
 upsilon.log(`Exotic item purchased: inventory_item_id=${invItemId}`);
@@ -77,9 +78,10 @@ upsilon.assert(me, "Character with exotic item must be present in match");
 
 upsilon.log(`[D11] Entity ${charId} entered match — bridge registered item-granted skill without error.`);
 
-// Cleanup admin resources (best-effort — test isolation)
-upsilon.call("admin_login", { account_name: "admin", password: "AdminPassword123!" });
-upsilon.call("admin_shop_item_delete", { id: shopItem.id });
-upsilon.call("admin_skill_template_delete", { id: template.id });
+// 5. Cleanup admin resources
+upsilon.adminSection(() => {
+    upsilon.call("admin_shop_item_delete", { id: shopItemId });
+    upsilon.call("admin_skill_template_delete", { id: templateId });
+});
 
 upsilon.log("D11 — ITEM GRANTS SKILL AT ARENA INIT PASSED.");

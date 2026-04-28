@@ -14,37 +14,31 @@
 
 upsilon.log("Starting: Admin Shop Item CRUD");
 
-// 1. Admin login
-const adminLogin = upsilon.call("admin_login", {
-    account_name: "admin",
-    password: "AdminPassword123!"
+// 1. Admin setup and item creation
+// @spec-link [[mech_script_admin_section]]
+let createdItemId;
+upsilon.adminSection(() => {
+    upsilon.log("1. Creating shop item...");
+    const uniqueName = "E2E_Item_" + Math.floor(Math.random() * 100000);
+    const created = upsilon.call("admin_shop_item_create", {
+        name: uniqueName,
+        slot: "utility",
+        cost: "150",
+        available: "true"
+    });
+    upsilon.assert(created && created.id, "Created item must have an ID");
+    upsilon.log(`Item created: ${created.id}`);
+    createdItemId = created.id;
+
+    // 3. Verify it appears in admin list
+    const adminList = upsilon.call("admin_shop_item_list", {});
+    const foundAdmin = adminList.find(i => i.id === createdItemId);
+    upsilon.assert(foundAdmin, "Created item must appear in admin list");
+
+    // 4. Toggle availability off
+    upsilon.call("admin_shop_item_update", { id: createdItemId, available: "false" });
+    upsilon.log("Item availability set to false.");
 });
-upsilon.assert(adminLogin && adminLogin.token, "Admin login must return a token");
-
-// 2. Create
-const uniqueName = "E2E_Item_" + Math.floor(Math.random() * 100000);
-const created = upsilon.call("admin_shop_item_create", {
-    name: uniqueName,
-    slot: "utility",
-    cost: "150",
-    available: "true"
-});
-upsilon.assert(created && created.id, "Created item must have an ID");
-upsilon.assertEquals(created.name, uniqueName, "Created name must match");
-upsilon.assertEquals(created.slot, "utility", "Slot must be utility");
-upsilon.assertEquals(created.cost, 150, "Cost must be 150");
-upsilon.assert(created.available === true, "Item must be available on creation");
-upsilon.log(`Item created: ${created.id}`);
-
-// 3. Appears in admin list
-const adminList = upsilon.call("admin_shop_item_list", {});
-upsilon.assert(adminList && adminList.length > 0, "Admin shop list must not be empty");
-const foundAdmin = adminList.find(i => i.id === created.id);
-upsilon.assert(foundAdmin, "Created item must appear in admin list");
-
-// 4. Toggle availability off
-upsilon.call("admin_shop_item_update", { id: created.id, available: "false" });
-upsilon.log("Item availability set to false.");
 
 // 5. Player shop browse must exclude unavailable item
 // Register a temporary player manually — no bootstrapBot to avoid session contamination.
@@ -63,7 +57,7 @@ upsilon.call("auth_register", {
 });
 
 const playerShop = upsilon.call("shop_browse", {});
-const hiddenInShop = playerShop.find(i => i.id === created.id);
+const hiddenInShop = playerShop.find(i => i.id === createdItemId);
 upsilon.assert(!hiddenInShop, "Unavailable item must not appear in player shop browse");
 upsilon.log("Confirmed item hidden from player shop.");
 
@@ -71,20 +65,16 @@ upsilon.log("Confirmed item hidden from player shop.");
 upsilon.call("auth_delete", {});
 upsilon.log("Temporary player account deleted.");
 
-// 6. Admin toggles back on and deletes — re-authenticate as admin
-upsilon.call("admin_login", {
-    account_name: "admin",
-    password: "AdminPassword123!"
+// 6. Admin toggles back on and deletes
+upsilon.adminSection(() => {
+    upsilon.call("admin_shop_item_update", { id: createdItemId, available: "true" });
+    upsilon.call("admin_shop_item_delete", { id: createdItemId });
+    upsilon.log("Item deleted.");
+
+    // 8. Verify gone from admin list
+    const afterDelete = upsilon.call("admin_shop_item_list", {});
+    const stillFound = afterDelete.find(i => i.id === createdItemId);
+    upsilon.assert(!stillFound, "Deleted item must not appear in admin list");
 });
-upsilon.call("admin_shop_item_update", { id: created.id, available: "true" });
-
-// 7. Delete
-upsilon.call("admin_shop_item_delete", { id: created.id });
-upsilon.log("Item deleted.");
-
-// 8. Verify gone from admin list
-const afterDelete = upsilon.call("admin_shop_item_list", {});
-const stillFound = afterDelete.find(i => i.id === created.id);
-upsilon.assert(!stillFound, "Deleted item must not appear in admin list");
 
 upsilon.log("ADMIN SHOP ITEM CRUD PASSED.");

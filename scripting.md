@@ -15,6 +15,7 @@ Before writing a script, you need to know the tools available in your JavaScript
 * **`upsilon.assert(condition, message)`**: Throws a JS exception if the condition is false, triggering an automated teardown.
 * **`upsilon.assertEquals(actual, expected, message)`**: Compares two values and throws if they differ.
 * **`upsilon.assertState(expectedState, message)`**: Validates if the game is currently `ACTIVE` or `FINISHED`.
+* **`upsilon.adminSection(callback)`**: Executes a block of code as the administrative user. It automatically handles admin login, runs the provided function, and restores the original bot session upon completion. It relies on the `UPSILON_ADMIN_PASSWORD` environment variable or a default testing password.
 
 #### Session Context (Local to this specific Agent)
 * **`upsilon.getContext(key)`**: Retrieves a value from the agent's local session (e.g., `user_id`, `match_id`).

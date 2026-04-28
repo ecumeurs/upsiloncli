@@ -11,6 +11,7 @@ parents: []
 dependents:
   - [[upsilonbattle:mechanic_script_lifecycle]]
   - [[upsilonbattle:mechanic_shared_memory]]
+  - [[mechanic_mech_script_admin_section]]
 ---
 
 # Multi-Agent Scripting Farm

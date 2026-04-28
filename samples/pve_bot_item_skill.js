@@ -8,50 +8,52 @@ const password = "VeryLongBotPassword123!";
 const gameMode = "1v1_PVE";
 
 // 1. Admin Setup - Create Skill and Items
-upsilon.log("--- Admin Setup ---");
-const adminLogin = upsilon.call("admin_login", {
-    account_name: "admin",
-    password: "AdminPassword123!"
-});
-upsilon.assert(adminLogin && adminLogin.token, "Admin login must succeed");
+// @spec-link [[mech_script_admin_section]]
+let swordItemId, amuletItemId;
 
-// Create Fireball Skill
-const fireballTemplate = upsilon.call("admin_skill_template_create", {
-    name: "Fireball",
-    behavior: "Direct",
-    grade: "I",
-    targeting: JSON.stringify({ Type: "Single", Range: 3 }),
-    costs: JSON.stringify({ MP: 3 }),
-    effect: JSON.stringify({ Type: "Damage", Value: 10 }),
-    weight_positive: 10,
-    weight_negative: 0,
-    available: true
-});
-upsilon.assert(fireballTemplate && fireballTemplate.id, "Fireball template must be created");
-upsilon.log(`Skill template created: ${fireballTemplate.id}`);
+upsilon.adminSection(() => {
+    upsilon.log("--- Admin Setup ---");
 
-// Create Steel Sword (Weapon)
-const swordItem = upsilon.call("admin_shop_item_create", {
-    name: "Steel Sword",
-    slot: "weapon",
-    cost: 50,
-    available: true,
-    properties_json: JSON.stringify({ WeaponBaseDamage: 30 })
-});
-upsilon.assert(swordItem && swordItem.id, "Sword item must be created");
-upsilon.log(`Sword item created: ${swordItem.id}`);
+    // Create Fireball Skill
+    const fireballTemplate = upsilon.call("admin_skill_template_create", {
+        name: "Fireball",
+        behavior: "Direct",
+        grade: "I",
+        targeting: { Type: "Single", Range: 3 },
+        costs: { MP: 3 },
+        effect: { Type: "Damage", Value: 10 },
+        weight_positive: 10,
+        weight_negative: 0,
+        available: true
+    });
+    upsilon.assert(fireballTemplate && fireballTemplate.id, "Fireball template must be created");
+    upsilon.log(`Skill template created: ${fireballTemplate.id}`);
 
-// Create Amulet of Fire (Exotic Skill Granting Item)
-const amuletItem = upsilon.call("admin_shop_item_create", {
-    name: "Amulet of Fire",
-    slot: "utility",
-    cost: 100,
-    available: true,
-    skill_template_id: fireballTemplate.id,
-    properties_json: JSON.stringify({})
+    // Create Steel Sword (Weapon)
+    const swordItem = upsilon.call("admin_shop_item_create", {
+        name: "Steel Sword",
+        slot: "weapon",
+        cost: 50,
+        available: true,
+        properties: { WeaponBaseDamage: 30 }
+    });
+    upsilon.assert(swordItem && swordItem.id, "Sword item must be created");
+    upsilon.log(`Sword item created: ${swordItem.id}`);
+    swordItemId = swordItem.id;
+
+    // Create Amulet of Fire (Exotic Skill Granting Item)
+    const amuletItem = upsilon.call("admin_shop_item_create", {
+        name: "Amulet of Fire",
+        slot: "utility",
+        cost: 100,
+        available: true,
+        skill_template_id: fireballTemplate.id,
+        properties_json: JSON.stringify({})
+    });
+    upsilon.assert(amuletItem && amuletItem.id, "Amulet item must be created");
+    upsilon.log(`Amulet item created: ${amuletItem.id}`);
+    amuletItemId = amuletItem.id;
 });
-upsilon.assert(amuletItem && amuletItem.id, "Amulet item must be created");
-upsilon.log(`Amulet item created: ${amuletItem.id}`);
 
 // 2. Bot Setup
 upsilon.log("--- Bot Setup ---");
@@ -61,8 +63,8 @@ const profile = upsilon.call("profile_get", {});
 const charId = profile.characters[0].id;
 
 // Purchase items
-upsilon.call("shop_purchase", { shop_item_id: swordItem.id });
-upsilon.call("shop_purchase", { shop_item_id: amuletItem.id });
+upsilon.call("shop_purchase", { shop_item_id: swordItemId });
+upsilon.call("shop_purchase", { shop_item_id: amuletItemId });
 upsilon.log("Items purchased.");
 
 // Equip items
@@ -101,42 +103,53 @@ function executeTacticalLogic(board, matchId) {
         return;
     }
 
-    // Find nearest enemy
+    // Find nearest enemy using 2D Chebyshev distance (allows diagonals)
     let nearestEnemy = enemies.reduce((prev, curr) => {
-        const dist = (e) => Math.abs(actingEntity.position.x - e.position.x) + Math.abs(actingEntity.position.y - e.position.y);
+        const dist = (e) => Math.max(Math.abs(actingEntity.position.x - e.position.x), Math.abs(actingEntity.position.y - e.position.y));
         return dist(curr) < dist(prev) ? curr : prev;
     });
 
-    const dist = Math.abs(actingEntity.position.x - nearestEnemy.position.x) + Math.abs(actingEntity.position.y - nearestEnemy.position.y);
+    const distManhattan = upsilon.distance2D(actingEntity.position, nearestEnemy.position);
+    const zDiff = upsilon.activeHeightDifference(nearestEnemy.position, board);
 
-    // 1. Use Fireball if in range (3) and has skill
-    const fireball = actingEntity.equipped_skills.find(s => s.name === "Fireball");
-    if (fireball && dist <= 3 && !actingEntity.has_attacked) {
-        upsilon.log("Casting Fireball on " + nearestEnemy.name);
-        upsilon.call("game_action", {
-            id: matchId,
-            entity_id: actingEntity.id,
-            type: "skill",
-            skill_id: fireball.skill_id,
-            target_coords: [nearestEnemy.position]
-        });
-        return;
+    // 1. Attack if adjacent (Manhattan <= 1) - Prefer Sword to see it in action
+    // Match engine attack logic: 2D Manhattan + height check
+    if (distManhattan <= 1 && zDiff <= 2 && !actingEntity.has_attacked) {
+        upsilon.log("Slashing " + nearestEnemy.name + " with Steel Sword!");
+        try {
+            upsilon.call("game_action", {
+                id: matchId,
+                entity_id: actingEntity.id,
+                type: "attack",
+                target_coords: [nearestEnemy.position]
+            });
+            return;
+        } catch (e) {
+            upsilon.log("Attack failed: " + (e.message || "Unknown error"));
+        }
     }
 
-    // 2. Attack if adjacent
-    if (dist <= 1 && !actingEntity.has_attacked) {
-        upsilon.log("Slashing " + nearestEnemy.name + " with Steel Sword!");
-        upsilon.call("game_action", {
-            id: matchId,
-            entity_id: actingEntity.id,
-            type: "attack",
-            target_coords: [nearestEnemy.position]
-        });
-        return;
+    // 2. Use Fireball if in range (3) and has skill
+    const fireball = actingEntity.equipped_skills.find(s => s.name === "Fireball");
+    if (fireball && distManhattan <= 3 && !actingEntity.has_attacked) {
+        upsilon.log("Casting Fireball on " + nearestEnemy.name);
+        try {
+            upsilon.call("game_action", {
+                id: matchId,
+                entity_id: actingEntity.id,
+                type: "skill",
+                skill_id: fireball.skill_id,
+                target_coords: [nearestEnemy.position]
+            });
+            return;
+        } catch (e) {
+            upsilon.log("Skill failed: " + (e.message || "Unknown error"));
+            // If it failed (e.g. cooldown), we might still want to move or try something else
+        }
     }
 
     // 3. Move toward enemy
-    if (dist > 1 && actingEntity.move > 0 && !actingEntity.has_attacked) {
+    if (distManhattan > 1 && actingEntity.move > 0 && !actingEntity.has_attacked) {
         const pathSteps = upsilon.planTravelToward(actingEntity.id, nearestEnemy.position, board);
         if (pathSteps && pathSteps.length > 0) {
             upsilon.log("Moving toward " + nearestEnemy.name);

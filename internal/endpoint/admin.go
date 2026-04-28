@@ -233,9 +233,9 @@ func (e *AdminSkillTemplateCreate) Params() []Param {
 		{Name: "grade", Hint: "I|II|III|IV|V", Required: true},
 		{Name: "weight_positive", Hint: "positive weight (int)", Required: true},
 		{Name: "weight_negative", Hint: "negative weight (int)", Required: true},
-		{Name: "targeting_json", Hint: "targeting map as JSON (e.g. {})"},
-		{Name: "costs_json", Hint: "costs map as JSON (e.g. {})"},
-		{Name: "effect_json", Hint: "effect map as JSON (e.g. {})"},
+		{Name: "targeting", Hint: "targeting map as JSON (e.g. {})"},
+		{Name: "costs", Hint: "costs map as JSON (e.g. {})"},
+		{Name: "effect", Hint: "effect map as JSON (e.g. {})"},
 		{Name: "available", Hint: "true|false (default true)"},
 	}
 }
@@ -270,9 +270,9 @@ func (e *AdminSkillTemplateUpdate) Params() []Param {
 		{Name: "grade", Hint: "I|II|III|IV|V"},
 		{Name: "weight_positive", Hint: "positive weight (int)"},
 		{Name: "weight_negative", Hint: "negative weight (int)"},
-		{Name: "targeting_json", Hint: "targeting map as JSON"},
-		{Name: "costs_json", Hint: "costs map as JSON"},
-		{Name: "effect_json", Hint: "effect map as JSON"},
+		{Name: "targeting", Hint: "targeting map as JSON"},
+		{Name: "costs", Hint: "costs map as JSON"},
+		{Name: "effect", Hint: "effect map as JSON"},
 		{Name: "available", Hint: "true|false"},
 	}
 }
@@ -350,7 +350,7 @@ func (e *AdminShopItemCreate) Params() []Param {
 		{Name: "name", Hint: "item name", Required: true},
 		{Name: "slot", Hint: "armor|utility|weapon", Required: true},
 		{Name: "cost", Hint: "credit cost (int)", Required: true},
-		{Name: "properties_json", Hint: "properties map as JSON (e.g. {})"},
+		{Name: "properties", Hint: "properties map as JSON (e.g. {})"},
 		{Name: "type", Hint: "item type tag"},
 		{Name: "available", Hint: "true|false (default true)"},
 		{Name: "skill_template_id", Hint: "skill template UUID (D11 exotic items, optional)"},
@@ -380,7 +380,7 @@ func (e *AdminShopItemUpdate) Params() []Param {
 		{Name: "name", Hint: "item name"},
 		{Name: "slot", Hint: "armor|utility|weapon"},
 		{Name: "cost", Hint: "credit cost (int)"},
-		{Name: "properties_json", Hint: "properties map as JSON"},
+		{Name: "properties", Hint: "properties map as JSON"},
 		{Name: "available", Hint: "true|false"},
 		{Name: "skill_template_id", Hint: "skill template UUID or empty to clear"},
 	}
@@ -446,9 +446,26 @@ func buildSkillTemplateBody(inputs map[string]string) map[string]interface{} {
 		body["available"] = v == "true"
 	}
 	// Accept raw JSON for complex fields; default to empty map if omitted
-	body["targeting"] = jsonOrEmpty(inputs["targeting_json"])
-	body["costs"] = jsonOrEmpty(inputs["costs_json"])
-	body["effect"] = jsonOrEmpty(inputs["effect_json"])
+	body["targeting"] = jsonOrEmpty(inputs["targeting"])
+	if _, ok := body["targeting"].(map[string]interface{}); !ok || len(body["targeting"].(map[string]interface{})) == 0 {
+		if v := inputs["targeting_json"]; v != "" {
+			body["targeting"] = jsonOrEmpty(v)
+		}
+	}
+
+	body["costs"] = jsonOrEmpty(inputs["costs"])
+	if _, ok := body["costs"].(map[string]interface{}); !ok || len(body["costs"].(map[string]interface{})) == 0 {
+		if v := inputs["costs_json"]; v != "" {
+			body["costs"] = jsonOrEmpty(v)
+		}
+	}
+
+	body["effect"] = jsonOrEmpty(inputs["effect"])
+	if _, ok := body["effect"].(map[string]interface{}); !ok || len(body["effect"].(map[string]interface{})) == 0 {
+		if v := inputs["effect_json"]; v != "" {
+			body["effect"] = jsonOrEmpty(v)
+		}
+	}
 	return body
 }
 
@@ -472,7 +489,9 @@ func buildShopItemBody(inputs map[string]string) map[string]interface{} {
 	if v := inputs["skill_template_id"]; v != "" {
 		body["skill_template_id"] = v
 	}
-	if pj := inputs["properties_json"]; pj != "" {
+	if pj := inputs["properties"]; pj != "" {
+		body["properties"] = jsonOrEmpty(pj)
+	} else if pj := inputs["properties_json"]; pj != "" {
 		body["properties"] = jsonOrEmpty(pj)
 	} else {
 		body["properties"] = map[string]interface{}{}

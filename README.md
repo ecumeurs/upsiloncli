@@ -155,7 +155,7 @@ Example:
 ```
 
 #### 3. Stress Testing & Performance Orchestration
-The [stress_test.py](../stress_test.py) script (located at the project root) is used for high-concurrency, long-duration evaluation of the entire Upsilon stack.
+The [stress_test.py](../scripts/stress_test.py) script (located in the `scripts/` folder) is used for high-concurrency, long-duration evaluation of the entire Upsilon stack.
 
 - **Concurreny**: Manages 12 simultaneous matches (1v1/2v2 PVP/PVE) by default.
 - **Persistence**: Automatically respawns matches as they finish for the duration of the test (default 1 hour).
@@ -164,7 +164,7 @@ The [stress_test.py](../stress_test.py) script (located at the project root) is 
 
 Usage:
 ```bash
-python3 stress_test.py
+python3 scripts/stress_test.py
 ```
 
 #### 4. Automated Battle Suite

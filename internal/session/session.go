@@ -267,6 +267,38 @@ func (s *Session) SaveToFile(path string) error {
 	return os.WriteFile(path, bytes, 0600)
 }
 
+// Snapshot returns a copy of the serializable session state.
+func (s *Session) Snapshot() SessionData {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	// Deep copy context map
+	ctx := make(map[string]string, len(s.context))
+	for k, v := range s.context {
+		ctx[k] = v
+	}
+
+	return SessionData{
+		Token:        s.token,
+		WSChannelKey: s.wsChannelKey,
+		Context:      ctx,
+		Participants: append([]dto.Player{}, s.participants...),
+	}
+}
+
+// Restore resets the session to a previously captured state.
+func (s *Session) Restore(data SessionData) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.token = data.Token
+	s.wsChannelKey = data.WSChannelKey
+	s.context = data.Context
+	s.participants = data.Participants
+	if s.context == nil {
+		s.context = make(map[string]string)
+	}
+}
+
 // LoadFromFile imports the session from a JSON file.
 func (s *Session) LoadFromFile(path string) error {
 	bytes, err := os.ReadFile(path)
