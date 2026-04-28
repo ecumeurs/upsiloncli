@@ -8,14 +8,14 @@ const botId = Math.floor(Math.random() * 10000) + "_" + agentIndex;
 
 // User A: The Thief
 const accountA = "thief_" + botId;
-const passA = "Pass123!";
+const passA = "VerySecurePassword123!";
 upsilon.bootstrapBot(accountA, passA);
 const profileA = upsilon.call("profile_get", {});
 const charA = profileA.characters[0].id;
 
 // User B: The Victim
 const accountB = "victim_" + botId;
-const passB = "Pass123!";
+const passB = "VerySecurePassword123!";
 // We need to register B and get an item
 const regB = upsilon.call("auth_register", {
     account_name: accountB,

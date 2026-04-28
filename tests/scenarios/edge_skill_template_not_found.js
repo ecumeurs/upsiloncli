@@ -20,10 +20,7 @@ try {
     upsilon.assert(false, "ERROR: Fetching non-existent template must return 404");
 } catch (e) {
     upsilon.log(`[Bot-${agentIndex}] ✅ Non-existent template rejected: ${e.message}`);
-    upsilon.assert(
-        e.message.includes("404") || e.message.toLowerCase().includes("not found"),
-        "Must be 404 Not Found"
-    );
+    upsilon.assertResponse(e, 404, "No query results for model");
 }
 
 upsilon.log(`[Bot-${agentIndex}] EC: SKILL TEMPLATE NOT FOUND PASSED.`);

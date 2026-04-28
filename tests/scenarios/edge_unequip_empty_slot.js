@@ -17,11 +17,11 @@ const charId = profile.characters[0].id;
 
 // 2. Attempt unequip on empty slot
 try {
-    upsilon.call("character_unequip", { character_id: charId, slot: "weapon" });
+    upsilon.call("character_unequip", { characterId: charId, slot: "weapon" });
     upsilon.assert(false, "ERROR: Unequipping empty slot was accepted!");
 } catch (e) {
     upsilon.log(`[Bot-${agentIndex}] ✅ Unequip properly rejected: ${e.message}`);
-    upsilon.assert(e.message.includes("404"), "Error must be 404 Not Found");
+    upsilon.assertResponse(e, 404, "Slot 'weapon' is empty.");
 }
 
 upsilon.log(`[Bot-${agentIndex}] EC-54: UNEQUIP EMPTY SLOT PASSED.`);

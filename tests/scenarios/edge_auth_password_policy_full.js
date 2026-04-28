@@ -17,7 +17,7 @@ const basePayload = {
 
 const tests = [
     { name: "Too Short (7 chars)", pass: "Short1!", expected: "least 15" },
-    { name: "Exactly 14 chars", pass: "FourteenChars14!", expected: "least 15" },
+    { name: "Exactly 14 chars", pass: "14CharPasswd!", expected: "least 15" },
     { name: "No Symbol", pass: "LongPasswordWithNumbers123", expected: "symbol" },
     { name: "No Uppercase", pass: "longpasswordwithnumbers123!", expected: "uppercase" },
     { name: "No Numbers", pass: "LongPasswordWithoutNumbers!", expected: "number" },
@@ -39,7 +39,9 @@ tests.forEach(test => {
         upsilon.call("auth_register", payload);
         upsilon.assert(false, `ERROR: Server accepted weak password: ${test.name}`);
     } catch (e) {
-        upsilon.assertResponse(e, 422, test.expected);
+        upsilon.assertResponse(e, 422);
+        const errors = e.meta && e.meta.errors ? JSON.stringify(e.meta.errors) : "";
+        upsilon.assert(errors.includes(test.expected), `Expected error to contain "${test.expected}", but got: ${errors}`);
         upsilon.log(`✅ Success: rejected ${test.name}`);
     }
 

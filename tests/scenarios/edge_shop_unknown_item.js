@@ -20,7 +20,7 @@ try {
     upsilon.assert(false, "ERROR: Purchase of ghost item was accepted!");
 } catch (e) {
     upsilon.log(`[Bot-${agentIndex}] ✅ Purchase properly rejected: ${e.message}`);
-    upsilon.assert(e.message.includes("404"), "Error must be 404 Not Found");
+    upsilon.assertResponse(e, 404, "Shop item not found.");
 }
 
 upsilon.log(`[Bot-${agentIndex}] EC-50: SHOP PURCHASE UNKNOWN ITEM PASSED.`);
