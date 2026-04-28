@@ -36,7 +36,7 @@ const swordItem = upsilon.call("admin_shop_item_create", {
     slot: "weapon",
     cost: 50,
     available: true,
-    properties_json: JSON.stringify({ WeaponBaseDamage: 5 })
+    properties_json: JSON.stringify({ WeaponBaseDamage: 30 })
 });
 upsilon.assert(swordItem && swordItem.id, "Sword item must be created");
 upsilon.log(`Sword item created: ${swordItem.id}`);

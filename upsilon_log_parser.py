@@ -163,6 +163,7 @@ def parse_log(filepath, tactical=False):
         (re.compile(r'--- (My Turn! Acting with .*) ---'), r'\1'),
         (re.compile(r'Moving \d+ cells along path: (.*)'), r'Moving: \1'),
         (re.compile(r'Target in range! Attacking!'), r'Action: Attack'),
+        (re.compile(r'Using fireball skill!'), r'Action: Use Fireball'),
         (re.compile(r'Targeting nearest enemy: (\w+)'), r'Target: \1'),
         (re.compile(r'Ending turn with pass\.'), r'Action: Pass'),
         (re.compile(r'No enemies left\. Passing\.'), r'Action: Pass (No Enemies)'),
@@ -291,6 +292,8 @@ def parse_log(filepath, tactical=False):
                         
                         if is_ws_update:
                             gs = full_body.get('data', {})
+                            if isinstance(gs, dict) and 'game_state' in gs:
+                                gs = gs['game_state']
                         else:
                             gs = full_body.get('data', {}).get('game_state') if full_body.get('data') else None
                             if current_status_code and current_status_code >= 400:
@@ -411,6 +414,14 @@ def process_game_state(bot_data, gs, line_no, tactical):
         elif action_type == "MOVE":
             path_len = len(action.get('path', []))
             bot_data['tactical'].append((f"Action: {actor_name} MOVED {path_len} cells.", line_no))
+        elif action_type == "SKILL":
+            skill_id = action.get('skill_id', 'Unknown')
+            target_id = action.get('target_id')
+            target_name = "Unknown"
+            if target_id in new_entity_ids:
+                target_ent = new_entity_ids[target_id]
+                target_name = f"{target_ent['name']} ({target_ent.get('nickname', 'AI')})"
+            bot_data['tactical'].append((f"Action: {actor_name} used SKILL [{skill_id}] on {target_name}.", line_no))
         elif action_type == "PASS":
             bot_data['tactical'].append((f"Action: {actor_name} PASSED their turn.", line_no))
 
@@ -491,6 +502,7 @@ def parse_log_stream(stream, args):
         (re.compile(r'--- (My Turn.*Acting with .*) ---'), r'\1'),
         (re.compile(r'Moving \d+ cells along path: (.*)'), r'Moving: \1'),
         (re.compile(r'Targeting nearest enemy: (\w+)'), r'Target: \1'),
+        (re.compile(r'Using fireball skill!'), r'Action: Use Fireball'),
         (re.compile(r'\[FEEDBACK\] (.*)'), r'Action: \1'),
         (re.compile(r'Starting turn shot clock'), r'CLOCK: Started'),
         (re.compile(r'Turn timeout detected!'), r'CLOCK: TIMEOUT'),
