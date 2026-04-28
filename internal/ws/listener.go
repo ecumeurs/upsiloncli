@@ -403,17 +403,16 @@ func (l *Listener) notifyWaiters(eventName string, data json.RawMessage) {
 			l.buffer = make(map[string][]interface{})
 		}
 		l.buffer[eventName] = append(l.buffer[eventName], parsed)
-		return
-	}
-
-	for _, ch := range waiters {
-		select {
-		case ch <- parsed:
-		default: // skip if channel is full
+	} else {
+		for _, ch := range waiters {
+			select {
+			case ch <- parsed:
+			default: // skip if channel is full
+			}
 		}
 	}
 
-	// 3. Trigger global hooks
+	// Always trigger hooks regardless of whether the event was buffered or dispatched.
 	l.hooksMu.Lock()
 	for _, h := range l.hooks {
 		h(eventName, parsed)

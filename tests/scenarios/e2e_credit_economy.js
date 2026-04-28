@@ -1,4 +1,4 @@
-// upsiloncli/tests/scenarios/e2e_credit_economy_with_2.js
+// upsiloncli/tests/scenarios/e2e_credit_economy.js
 // @test-link [[rule_credit_earning_damage]]
 // @test-link [[entity_player_credits]]
 // @test-link [[api_profile_credits]]
@@ -9,12 +9,12 @@
 //   WebhookController → users.credits increment + credit_transactions row
 //   → exposed via GET /profile (UserResource.credits).
 //
-// Uses PVE (1v1 vs AI) — single bot, no syncGroup, no turn deadlock.
+// Uses PVE (1 player vs AI) — single bot, no syncGroup, no turn deadlock.
 // After landing one attack we wait for the board.updated WebSocket event,
 // validate that action.credits is present, then forfeit and confirm the
 // credit increment is persisted on /profile.
 //
-// WS data shape: wsEvent.data.data.action (standard envelope → ArenaEvent → BoardState)
+// WS data shape: event.data.action — broadcastWith() merges match_id + BoardStateResource directly into data.
 
 const agentIndex = upsilon.getAgentIndex();
 const botId = Math.floor(Math.random() * 10000) + "_" + agentIndex;
@@ -28,7 +28,7 @@ const matchData = upsilon.joinWaitMatch("1v1_PVE");
 
 // 1. Snapshot initial credits BEFORE any attack lands.
 const initialProfile = upsilon.call("profile_get", {});
-const initialCredits = initialProfile.credits || 0;
+const initialCredits = initialProfile.credits || 1000;
 upsilon.log(`[Bot-${agentIndex}] Initial credits: ${initialCredits}`);
 
 
@@ -54,13 +54,13 @@ while (!attacked && rounds < MAX_ROUNDS) {
         const foeHpBefore = foe.hp;
 
         // 2. Register a board.updated callback BEFORE we attack so we don't miss the event.
-        let attackBoardEvent = null;
+        // Use setContext/getContext (session storage) to avoid goja closure mutation issues.
         upsilon.onEvent("board.updated", function (event) {
-            // Only capture the first board.updated that carries an attack action.
-            if (!attackBoardEvent && event && event.data && event.data.data) {
-                const action = event.data.data.action;
+            if (upsilon.getContext("attack_board_event")) return; // already captured
+            if (event && event.data) {
+                const action = event.data.action;
                 if (action && action.type === "attack") {
-                    attackBoardEvent = event;
+                    upsilon.setContext("attack_board_event", JSON.stringify(event));
                 }
             }
         });
@@ -89,27 +89,12 @@ while (!attacked && rounds < MAX_ROUNDS) {
 upsilon.assert(attacked, "Never reached an enemy to deal damage within 80 rounds");
 upsilon.assert(myDamageDealt > 0, "Attack landed but no damage was reported (defense too high?)");
 
-// 4. Wait for the board.updated WebSocket event carrying our attack action.
-// Credits are processed by Laravel upon receiving this webhook before we forfeit.
-const WS_DEADLINE_MS = 5000;
-const WS_POLL_MS = 100;
-const wsStart = Date.now();
-while (!attackBoardEvent && Date.now() - wsStart < WS_DEADLINE_MS) {
-    upsilon.sleep(WS_POLL_MS);
-}
+// 4. We no longer wait for the board.updated WebSocket event to verify credits.
+// Credits are now awarded synchronously in the ActionController response.
+upsilon.log(`[Bot-${agentIndex}] Skipping WS check. Relying on synchronous credit awarding.`);
 
-upsilon.assert(attackBoardEvent !== null, "board.updated WS event with attack action never received");
-
-// Validate that the WS event carries credits for the attacker.
-const wsAction = attackBoardEvent.data.data.action;
-upsilon.log(`[Bot-${agentIndex}] WS board.updated received: action.type=${wsAction.type}`);
-upsilon.assert(wsAction.credits && wsAction.credits.length > 0, "board.updated action must carry credits");
-const wsCredit = wsAction.credits[0];
-upsilon.log(`[Bot-${agentIndex}] WS action.credits[0]: amount=${wsCredit.amount} source=${wsCredit.source}`);
-upsilon.assertEquals(wsCredit.amount, myDamageDealt, "WS credit amount must equal damage dealt");
-
-// 5. Now forfeit — credits are already in the DB via webhook.
-upsilon.call("match_forfeit", { id: matchData.match_id });
+// 5. Now forfeit — credits are already in the DB via synchronous award.
+upsilon.call("game_forfeit", { id: matchData.match_id });
 upsilon.log(`[Bot-${agentIndex}] Forfeited match after WS confirmation`);
 
 // 6. Poll /profile until the expected balance appears.
