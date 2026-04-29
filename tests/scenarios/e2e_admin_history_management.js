@@ -12,29 +12,29 @@
 upsilon.log("Starting E2E Admin History Management Verification");
 
 // @spec-link [[mech_script_admin_section]]
-upsilon.adminSection(() => {
+upsilon.adminSection((admin) => {
     // 1. Fetch History
-    upsilon.log("1. Fetching Match History Archive...");
-    const history = upsilon.call("admin_history", {});
-    upsilon.assert(history.items != null, "Match items missing");
-    upsilon.log(`✅ History Fetch Successful. Found ${history.items.length} records.`);
+    admin.log("1. Fetching Match History Archive...");
+    const history = admin.call("admin_history", {});
+    admin.assert(history.items != null, "Match items missing");
+    admin.log(`✅ History Fetch Successful. Found ${history.items.length} records.`);
 
     // 2. Performance Check
     if (history.has_more) {
-        upsilon.log("2. Testing Manual Pagination (ISS-053)...");
-        const nextBatch = upsilon.call("admin_history", { cursor: history.next_cursor });
-        upsilon.assert(nextBatch.items.length > 0, "Failed to fetch second batch using cursor");
-        upsilon.log("✅ Manual Pagination Functional.");
+        admin.log("2. Testing Manual Pagination (ISS-053)...");
+        const nextBatch = admin.call("admin_history", { cursor: history.next_cursor });
+        admin.assert(nextBatch.items.length > 0, "Failed to fetch second batch using cursor");
+        admin.log("✅ Manual Pagination Functional.");
     } else {
-        upsilon.log("2. Skipping Pagination (Insufficient data).");
+        admin.log("2. Skipping Pagination (Insufficient data).");
     }
 
     // 3. Purge Action
-    upsilon.log("3. Testing History Purge Protocol (ISS-051)...");
-    const purgeResp = upsilon.call("admin_history_purge", {});
-    upsilon.log(`✅ Purge Operation Executed. Status: ${purgeResp.message}`);
+    admin.log("3. Testing History Purge Protocol (ISS-051)...");
+    const purgeResp = admin.call("admin_history_purge", {});
+    admin.log(`✅ Purge Operation Executed. Status: ${purgeResp.message}`);
     if (purgeResp.purged_count !== undefined) {
-        upsilon.log(`Purged count: ${purgeResp.purged_count}`);
+        admin.log(`Purged count: ${purgeResp.purged_count}`);
     }
 });
 

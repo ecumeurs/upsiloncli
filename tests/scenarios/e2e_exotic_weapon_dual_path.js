@@ -21,9 +21,9 @@ upsilon.log("Starting: D11 Dual-Path — Exotic Weapon (Buff + Skill)");
 // @spec-link [[mech_script_admin_section]]
 let weaponItemId, templateId;
 
-upsilon.adminSection(() => {
+upsilon.adminSection((admin) => {
     const uniqueSkillName = "ExoticBlade_Skill_" + Math.floor(Math.random() * 100000);
-    const template = upsilon.call("admin_skill_template_create", {
+    const template = admin.call("admin_skill_template_create", {
         name: uniqueSkillName,
         behavior: "Counter",
         grade: "IV",
@@ -31,13 +31,13 @@ upsilon.adminSection(() => {
         weight_negative: "4",
         available: "true"
     });
-    upsilon.assert(template && template.id, "Skill template must be created");
-    upsilon.log(`Skill template: ${template.id}`);
+    admin.assert(template && template.id, "Skill template must be created");
+    admin.log(`Skill template: ${template.id}`);
     templateId = template.id;
 
     // 2. Exotic weapon — property grants buff, skill_template_id grants skill
     const uniqueWeaponName = "ExoticBlade_" + Math.floor(Math.random() * 100000);
-    const weaponItem = upsilon.call("admin_shop_item_create", {
+    const weaponItem = admin.call("admin_shop_item_create", {
         name: uniqueWeaponName,
         slot: "weapon",
         cost: "200",
@@ -45,8 +45,8 @@ upsilon.adminSection(() => {
         properties: { WeaponBaseDamage: 20 },
         skill_template_id: template.id
     });
-    upsilon.assert(weaponItem && weaponItem.id, "Exotic weapon must be created");
-    upsilon.log(`Exotic weapon: ${weaponItem.id} ("${weaponItem.name}")`);
+    admin.assert(weaponItem && weaponItem.id, "Exotic weapon must be created");
+    admin.log(`Exotic weapon: ${weaponItem.id} ("${weaponItem.name}")`);
     weaponItemId = weaponItem.id;
 });
 
@@ -95,9 +95,9 @@ upsilon.log(`[D11] Attack buff from weapon confirmed (origin_id: ${invItemId})`)
 upsilon.log(`[D11] Skill from template confirmed — bridge registered without error.`);
 
 // Cleanup
-upsilon.adminSection(() => {
-    upsilon.call("admin_shop_item_delete", { id: weaponItemId });
-    upsilon.call("admin_skill_template_delete", { id: templateId });
+upsilon.adminSection((admin) => {
+    admin.call("admin_shop_item_delete", { id: weaponItemId });
+    admin.call("admin_skill_template_delete", { id: templateId });
 });
 
 upsilon.log("D11 DUAL-PATH — EXOTIC WEAPON PASSED.");

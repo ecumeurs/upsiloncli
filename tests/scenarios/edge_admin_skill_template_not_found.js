@@ -7,33 +7,33 @@
 upsilon.log("Starting EC: Admin Skill Template Not Found");
 
 // @spec-link [[mech_script_admin_section]]
-upsilon.adminSection(() => {
+upsilon.adminSection((admin) => {
     const fakeId = "00000000-0000-0000-0000-000000000001";
 
     // GET non-existent
     try {
-        upsilon.call("admin_skill_template_get", { id: fakeId });
-        upsilon.assert(false, "ERROR: GET non-existent template must return 404");
+        admin.call("admin_skill_template_get", { id: fakeId });
+        admin.assert(false, "ERROR: GET non-existent template must return 404");
     } catch (e) {
-        upsilon.assertResponse(e, 404, "No query results for model [App\\Models\\SkillTemplate]");
+        admin.assertResponse(e, 404, "No query results for model [App\\Models\\SkillTemplate]");
     }
 
 
     // PUT non-existent
     try {
-        upsilon.call("admin_skill_template_update", { id: fakeId, name: "Ghost" });
-        upsilon.assert(false, "ERROR: PUT non-existent template must return 404");
+        admin.call("admin_skill_template_update", { id: fakeId, name: "Ghost" });
+        admin.assert(false, "ERROR: PUT non-existent template must return 404");
     } catch (e) {
-        upsilon.assertResponse(e, 404, "No query results for model [App\\Models\\SkillTemplate]");
+        admin.assertResponse(e, 404, "No query results for model [App\\Models\\SkillTemplate]");
     }
 
 
     // DELETE non-existent
     try {
-        upsilon.call("admin_skill_template_delete", { id: fakeId });
-        upsilon.assert(false, "ERROR: DELETE non-existent template must return 404");
+        admin.call("admin_skill_template_delete", { id: fakeId });
+        admin.assert(false, "ERROR: DELETE non-existent template must return 404");
     } catch (e) {
-        upsilon.assertResponse(e, 404, "No query results for model [App\\Models\\SkillTemplate]");
+        admin.assertResponse(e, 404, "No query results for model [App\\Models\\SkillTemplate]");
     }
 });
 

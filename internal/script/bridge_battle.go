@@ -564,11 +564,13 @@ func (a *Agent) jsAdminSection(call goja.FunctionCall) goja.Value {
 	}
 
 	a.jsLog("--- [ADMIN_SECTION] Entering protected block ---")
+	a.isInAdminSection = true
 	_, err := a.jsCall("admin_login", map[string]interface{}{
 		"account_name": "admin",
 		"password":     adminPassword,
 	})
 	if err != nil {
+		a.isInAdminSection = false
 		panic(a.VM.ToValue("adminSection: Admin login failed: " + err.Error()))
 	}
 
@@ -576,6 +578,7 @@ func (a *Agent) jsAdminSection(call goja.FunctionCall) goja.Value {
 	// We use a defer to ensure the session is restored even if the callback panics.
 	defer func() {
 		a.jsLog("--- [ADMIN_SECTION] Exiting block, restoring session ---")
+		a.isInAdminSection = false
 		// Logout admin to be clean
 		func() {
 			defer recover() // Ignore logout errors during teardown
@@ -585,7 +588,13 @@ func (a *Agent) jsAdminSection(call goja.FunctionCall) goja.Value {
 		a.Listener.Sync()
 	}()
 
-	res, err := cb(goja.Undefined())
+	// Create a scoped admin object to pass to the callback
+	adminObj := a.VM.NewObject()
+	adminObj.Set("call", a.jsCall)
+	adminObj.Set("log", a.jsLog)
+	adminObj.Set("assert", a.jsAssert)
+
+	res, err := cb(goja.Undefined(), adminObj)
 	if err != nil {
 		panic(a.VM.ToValue(fmt.Sprintf("adminSection callback error: %v", err)))
 	}

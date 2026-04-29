@@ -17,27 +17,27 @@ upsilon.log("Starting: Admin Shop Item CRUD");
 // 1. Admin setup and item creation
 // @spec-link [[mech_script_admin_section]]
 let createdItemId;
-upsilon.adminSection(() => {
-    upsilon.log("1. Creating shop item...");
+upsilon.adminSection((admin) => {
+    admin.log("1. Creating shop item...");
     const uniqueName = "E2E_Item_" + Math.floor(Math.random() * 100000);
-    const created = upsilon.call("admin_shop_item_create", {
+    const created = admin.call("admin_shop_item_create", {
         name: uniqueName,
         slot: "utility",
         cost: "150",
         available: "true"
     });
-    upsilon.assert(created && created.id, "Created item must have an ID");
-    upsilon.log(`Item created: ${created.id}`);
+    admin.assert(created && created.id, "Created item must have an ID");
+    admin.log(`Item created: ${created.id}`);
     createdItemId = created.id;
 
     // 3. Verify it appears in admin list
-    const adminList = upsilon.call("admin_shop_item_list", {});
+    const adminList = admin.call("admin_shop_item_list", {});
     const foundAdmin = adminList.find(i => i.id === createdItemId);
-    upsilon.assert(foundAdmin, "Created item must appear in admin list");
+    admin.assert(foundAdmin, "Created item must appear in admin list");
 
     // 4. Toggle availability off
-    upsilon.call("admin_shop_item_update", { id: createdItemId, available: "false" });
-    upsilon.log("Item availability set to false.");
+    admin.call("admin_shop_item_update", { id: createdItemId, available: "false" });
+    admin.log("Item availability set to false.");
 });
 
 // 5. Player shop browse must exclude unavailable item
@@ -66,15 +66,15 @@ upsilon.call("auth_delete", {});
 upsilon.log("Temporary player account deleted.");
 
 // 6. Admin toggles back on and deletes
-upsilon.adminSection(() => {
-    upsilon.call("admin_shop_item_update", { id: createdItemId, available: "true" });
-    upsilon.call("admin_shop_item_delete", { id: createdItemId });
-    upsilon.log("Item deleted.");
+upsilon.adminSection((admin) => {
+    admin.call("admin_shop_item_update", { id: createdItemId, available: "true" });
+    admin.call("admin_shop_item_delete", { id: createdItemId });
+    admin.log("Item deleted.");
 
     // 8. Verify gone from admin list
-    const afterDelete = upsilon.call("admin_shop_item_list", {});
+    const afterDelete = admin.call("admin_shop_item_list", {});
     const stillFound = afterDelete.find(i => i.id === createdItemId);
-    upsilon.assert(!stillFound, "Deleted item must not appear in admin list");
+    admin.assert(!stillFound, "Deleted item must not appear in admin list");
 });
 
 upsilon.log("ADMIN SHOP ITEM CRUD PASSED.");

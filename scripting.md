@@ -15,7 +15,10 @@ Before writing a script, you need to know the tools available in your JavaScript
 * **`upsilon.assert(condition, message)`**: Throws a JS exception if the condition is false, triggering an automated teardown.
 * **`upsilon.assertEquals(actual, expected, message)`**: Compares two values and throws if they differ.
 * **`upsilon.assertState(expectedState, message)`**: Validates if the game is currently `ACTIVE` or `FINISHED`.
-* **`upsilon.adminSection(callback)`**: Executes a block of code as the administrative user. It automatically handles admin login, runs the provided function, and restores the original bot session upon completion. It relies on the `UPSILON_ADMIN_PASSWORD` environment variable or a default testing password.
+* **`upsilon.adminSection(callback(admin))`**: Executes a block of code as the administrative user. It automatically handles admin login, runs the provided function, and restores the original bot session upon completion. 
+    - **Parameter**: The callback receives an `admin` proxy object. You **must** use this object for administrative calls (e.g., `admin.call("admin_users", {})`).
+    - **Security**: Direct calls to `admin_*` routes via the global `upsilon` object are rejected.
+    - **Credentials**: Relies on the `UPSILON_ADMIN_PASSWORD` environment variable or a default testing password.
 
 #### Session Context (Local to this specific Agent)
 * **`upsilon.getContext(key)`**: Retrieves a value from the agent's local session (e.g., `user_id`, `match_id`).
@@ -139,9 +142,9 @@ These routes are available via `upsilon.call(route_name, params)`.
 | **`game_action`** | POST | `/api/v1/game/{id}/action` | Move, Attack, or Skill | `id`, `entity_id`, `type` (move/attack/pass/skill), `target_coords` (x,y), `skill_id` (Optional) |
 | **`game_forfeit`** | POST | `/api/v1/game/{id}/forfeit` | Concede the match | `id` |
 | **`leaderboard`** | GET | `/api/v1/leaderboard` | Get rankings | `mode` (1v1_PVP, etc) |
-| **`admin_login`** | POST | `/api/v1/auth/admin/login` | (Admin Only) Administrative auth | `account_name`, `password` |
-| **`admin_users`** | GET | `/api/v1/admin/users` | (Admin Only) List users (paginated) | `search` (Optional), `cursor` (Optional) |
-| **`admin_user_anonymize`** | POST | `/api/v1/admin/users/{name}/anonymize` | (Admin Only) GDPR force anonymize | `account_name` |
-| **`admin_user_delete`** | DELETE | `/api/v1/admin/users/{name}` | (Admin Only) Administrative soft delete | `account_name` |
-| **`admin_history`** | GET | `/api/v1/admin/history` | (Admin Only) List match history | `search` (Optional), `cursor` (Optional) |
-| **`admin_history_purge`** | POST | `/api/v1/admin/history/purge` | (Admin Only) Purge old records (>90d) | - |
+| **`admin_login`** | POST | `/api/v1/auth/admin/login` | (Admin Only) Administrative auth (Automated via `adminSection`) | `account_name`, `password` |
+| **`admin_users`** | GET | `/api/v1/admin/users` | (Admin Only) List users. Requires `admin.call()` | `search` (Optional), `cursor` (Optional) |
+| **`admin_user_anonymize`** | POST | `/api/v1/admin/users/{name}/anonymize` | (Admin Only) GDPR force anonymize. Requires `admin.call()` | `account_name` |
+| **`admin_user_delete`** | DELETE | `/api/v1/admin/users/{name}` | (Admin Only) Administrative soft delete. Requires `admin.call()` | `account_name` |
+| **`admin_history`** | GET | `/api/v1/admin/history` | (Admin Only) List match history. Requires `admin.call()` | `search` (Optional), `cursor` (Optional) |
+| **`admin_history_purge`** | POST | `/api/v1/admin/history/purge` | (Admin Only) Purge old records (>90d). Requires `admin.call()` | - |

@@ -11,10 +11,10 @@ let fireballRejected = false;
 let amuletItemId;
 
 // 1. Admin Setup - Create Skill and Item
-upsilon.adminSection(() => {
-    upsilon.log("--- Admin Setup ---");
+upsilon.adminSection((admin) => {
+    admin.log("--- Admin Setup ---");
 
-    const fireballTemplate = upsilon.call("admin_skill_template_create", {
+    const fireballTemplate = admin.call("admin_skill_template_create", {
         name: "Fireball",
         behavior: "Direct",
         grade: "I",
@@ -30,9 +30,9 @@ upsilon.adminSection(() => {
         weight_negative: 0,
         available: true
     });
-    upsilon.assert(fireballTemplate && fireballTemplate.id, "Fireball template must be created");
+    admin.assert(fireballTemplate && fireballTemplate.id, "Fireball template must be created");
 
-    const amuletItem = upsilon.call("admin_shop_item_create", {
+    const amuletItem = admin.call("admin_shop_item_create", {
         name: "Amulet of Fire",
         slot: "utility",
         cost: 100,
@@ -40,7 +40,7 @@ upsilon.adminSection(() => {
         skill_template_id: fireballTemplate.id,
         properties_json: JSON.stringify({})
     });
-    upsilon.assert(amuletItem && amuletItem.id, "Amulet item must be created");
+    admin.assert(amuletItem && amuletItem.id, "Amulet item must be created");
     amuletItemId = amuletItem.id;
 });
 
