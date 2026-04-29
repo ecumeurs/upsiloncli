@@ -593,6 +593,9 @@ func (a *Agent) jsAdminSection(call goja.FunctionCall) goja.Value {
 	adminObj.Set("call", a.jsCall)
 	adminObj.Set("log", a.jsLog)
 	adminObj.Set("assert", a.jsAssert)
+	adminObj.Set("assertEquals", a.jsAssertEquals)
+	adminObj.Set("assertState", a.jsAssertState)
+	adminObj.Set("assertResponse", a.jsAssertResponse)
 
 	res, err := cb(goja.Undefined(), adminObj)
 	if err != nil {
