@@ -33,6 +33,7 @@ type Agent struct {
 	lastConsumedVersion uint64
 	currentTurnEntityID string
 	hasAttackedThisTurn bool
+	isInAdminSection    bool
 	eventQueue          chan eventEnvelope
 	eventCallbacks      map[string][]goja.Callable
 	cbMu                sync.Mutex

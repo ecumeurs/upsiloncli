@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/ecumeurs/upsiloncli/internal/endpoint"
@@ -94,6 +95,12 @@ func (a *Agent) jsCall(routeName string, params map[string]interface{}) (interfa
 	ep := a.Registry.Get(routeName)
 	if ep == nil {
 		a.throwStructuredError(fmt.Sprintf("unknown route: %s", routeName))
+		return nil, nil // unreachable
+	}
+
+	// SECURITY: Reject admin routes if not in adminSection
+	if strings.HasPrefix(routeName, "admin_") && !a.isInAdminSection {
+		a.throwStructuredError(fmt.Sprintf("security error: route '%s' is administrative and can only be called inside upsilon.adminSection()", routeName))
 		return nil, nil // unreachable
 	}
 

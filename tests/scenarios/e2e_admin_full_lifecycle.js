@@ -13,29 +13,29 @@
 upsilon.log("Starting E2E Admin Full Lifecycle Verification");
 
 // @spec-link [[mech_script_admin_section]]
-upsilon.adminSection(() => {
+upsilon.adminSection((admin) => {
     // 2. Dashbord Access
-    upsilon.log("2. Testing Dashboard Navigation...");
+    admin.log("2. Testing Dashboard Navigation...");
     // If the CLI has a dashboard endpoint mapping
     try {
-        upsilon.call("admin_dashboard", {});
-        upsilon.log("✅ Admin Dashboard Accessible.");
+        admin.call("admin_dashboard", {});
+        admin.log("✅ Admin Dashboard Accessible.");
     } catch (e) {
-        upsilon.log("⚠️ Dashboard endpoint mapping might be missing, skipping direct check.");
+        admin.log("⚠️ Dashboard endpoint mapping might be missing, skipping direct check.");
     }
 
     // 3. User Management
-    upsilon.log("3. Testing User Registry (ISS-051, ISS-053)...");
-    const userList = upsilon.call("admin_users", {});
+    admin.log("3. Testing User Registry (ISS-051, ISS-053)...");
+    const userList = admin.call("admin_users", {});
     
-    upsilon.assert(userList.items != null, "Items missing from user response");
-    upsilon.log(`✅ User Registry Fetch Successful. Found ${userList.items.length} entities.`);
+    admin.assert(userList.items != null, "Items missing from user response");
+    admin.log(`✅ User Registry Fetch Successful. Found ${userList.items.length} entities.`);
 
     // 4. Search Filter
-    upsilon.log("4. Testing User Search...");
-    const searchResp = upsilon.call("admin_users", { search: "admin" });
-    upsilon.assert(searchResp.items.length >= 1, "Search for 'admin' returned no results");
-    upsilon.log("✅ User Search Functional.");
+    admin.log("4. Testing User Search...");
+    const searchResp = admin.call("admin_users", { search: "admin" });
+    admin.assert(searchResp.items.length >= 1, "Search for 'admin' returned no results");
+    admin.log("✅ User Search Functional.");
 });
 
 upsilon.log("SUCCESS: ADMIN FULL LIFECYCLE VERIFIED.");

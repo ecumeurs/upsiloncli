@@ -17,9 +17,9 @@ upsilon.log("Starting: D11 — Item Grants Skill at Arena Init");
 // @spec-link [[mech_script_admin_section]]
 let shopItemId, templateId;
 
-upsilon.adminSection(() => {
+upsilon.adminSection((admin) => {
     const uniqueSkillName = "ExoticSkill_" + Math.floor(Math.random() * 100000);
-    const template = upsilon.call("admin_skill_template_create", {
+    const template = admin.call("admin_skill_template_create", {
         name: uniqueSkillName,
         behavior: "Passive",
         grade: "III",
@@ -27,21 +27,21 @@ upsilon.adminSection(() => {
         weight_negative: "1",
         available: "true"
     });
-    upsilon.assert(template && template.id, "Skill template must be created");
-    upsilon.log(`Skill template created: ${template.id} ("${template.name}")`);
+    admin.assert(template && template.id, "Skill template must be created");
+    admin.log(`Skill template created: ${template.id} ("${template.name}")`);
     templateId = template.id;
 
     // 2. Admin creates exotic shop item linked to the template
     const uniqueItemName = "ExoticAmulet_" + Math.floor(Math.random() * 100000);
-    const shopItem = upsilon.call("admin_shop_item_create", {
+    const shopItem = admin.call("admin_shop_item_create", {
         name: uniqueItemName,
         slot: "utility",
         cost: "100",
         available: "true",
         skill_template_id: template.id
     });
-    upsilon.assert(shopItem && shopItem.id, "Exotic shop item must be created");
-    upsilon.log(`Exotic shop item created: ${shopItem.id} ("${shopItem.name}")`);
+    admin.assert(shopItem && shopItem.id, "Exotic shop item must be created");
+    admin.log(`Exotic shop item created: ${shopItem.id} ("${shopItem.name}")`);
     shopItemId = shopItem.id;
 });
 
@@ -79,9 +79,9 @@ upsilon.assert(me, "Character with exotic item must be present in match");
 upsilon.log(`[D11] Entity ${charId} entered match — bridge registered item-granted skill without error.`);
 
 // 5. Cleanup admin resources
-upsilon.adminSection(() => {
-    upsilon.call("admin_shop_item_delete", { id: shopItemId });
-    upsilon.call("admin_skill_template_delete", { id: templateId });
+upsilon.adminSection((admin) => {
+    admin.call("admin_shop_item_delete", { id: shopItemId });
+    admin.call("admin_skill_template_delete", { id: templateId });
 });
 
 upsilon.log("D11 — ITEM GRANTS SKILL AT ARENA INIT PASSED.");
