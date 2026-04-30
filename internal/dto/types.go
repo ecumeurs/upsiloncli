@@ -55,6 +55,45 @@ type PropertyDTO struct {
 	SValue *string  `json:"svalue,omitempty"`
 }
 
+func (p *PropertyDTO) UnmarshalJSON(data []byte) error {
+	// Handle raw empty array [] (common mismatch from engine/Laravel)
+	if string(data) == "[]" {
+		return nil
+	}
+
+	// Try unmarshaling as a struct first (structured properties)
+	type alias PropertyDTO
+	var a alias
+	if err := json.Unmarshal(data, &a); err == nil && (a.Value != nil || a.Max != nil || a.BValue != nil || a.SValue != nil || a.FValue != nil) {
+		*p = PropertyDTO(a)
+		return nil
+	}
+
+	// Fallback to primitives
+	var i int
+	if err := json.Unmarshal(data, &i); err == nil {
+		p.Value = &i
+		return nil
+	}
+	var f float64
+	if err := json.Unmarshal(data, &f); err == nil {
+		p.FValue = &f
+		return nil
+	}
+	var b bool
+	if err := json.Unmarshal(data, &b); err == nil {
+		p.BValue = &b
+		return nil
+	}
+	var s string
+	if err := json.Unmarshal(data, &s); err == nil {
+		p.SValue = &s
+		return nil
+	}
+
+	return nil // Silently ignore malformed properties to keep the board alive
+}
+
 type PropertyMap = map[string]PropertyDTO
 
 type EquippedSkill struct {
