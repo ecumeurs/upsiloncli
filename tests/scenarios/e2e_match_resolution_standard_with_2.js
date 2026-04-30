@@ -25,7 +25,13 @@ function pollProfile(predicate, deadlineMs) {
 
 if (agentIndex === 1) {
     upsilon.log("[Bot-1] Forfeiting match to trigger resolution...");
-    upsilon.call("game_forfeit", { id: matchData.match_id });
+    try {
+        upsilon.call("game_forfeit", { id: matchData.match_id });
+        upsilon.setContext("match_id", ""); // Clear immediately
+        upsilon.log("[Bot-1] Forfeit successful.");
+    } catch (e) {
+        upsilon.log("[Bot-1] Forfeit failed (possibly already ended): " + JSON.stringify(e));
+    }
 
     const final = pollProfile(p => (p.total_losses || 0) >= 1, 10000);
     upsilon.assert(final !== null, "Loser never recorded a loss");

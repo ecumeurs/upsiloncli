@@ -1,15 +1,16 @@
 package script
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
-	"context"
-	"strings"
 
 	"github.com/dop251/goja"
 	"github.com/ecumeurs/upsiloncli/internal/endpoint"
@@ -150,18 +151,18 @@ func RunFarm(baseURL string, reg *endpoint.Registry, scriptPaths []string, logDi
 						reqID, _ := obj["request_id"].(string)
 
 						if msg != "" {
-							formatted := fmt.Sprintf("[%s] JS Exception: %s", ts, msg)
+							formatted := fmt.Sprintf("JS Exception: %s", msg)
 							if errKey != "" {
 								formatted += fmt.Sprintf(" (key: %s)", errKey)
 							}
 							if reqID != "" && reqID != "cli-internal" {
 								formatted += fmt.Sprintf(" [Req: %s]", reqID)
 							}
-							fmt.Fprintf(logger, "%s\n", formatted)
+							fmt.Fprintf(logger, "[{%s}] [%s] %s\n", ts, agentID, formatted)
 						} else {
 							// Fallback to JSON stringification for unknown objects
-							jsonBytes, _ := json.MarshalIndent(obj, "    ", "  ")
-							fmt.Fprintf(logger, "[{%s}] [%s] JS Exception (Object): %s\n", ts, agentID, string(jsonBytes))
+							jsonBytes, _ := json.Marshal(obj)
+							fmt.Fprintf(logger, "[{%s}] [%s] JS Exception: (Object) %s\n", ts, agentID, string(jsonBytes))
 						}
 					} else {
 						fmt.Fprintf(logger, "[{%s}] [%s] JS Exception: %v\n", ts, agentID, jsErr.String())
