@@ -143,7 +143,29 @@ func RunFarm(baseURL string, reg *endpoint.Registry, scriptPaths []string, logDi
 
 				ts := time.Now().UTC().Format("2006-01-02T15:04:05.000Z07:00")
 				if jsErr, ok := err.(*goja.Exception); ok {
-					fmt.Fprintf(logger, "[{%s}] [%s] JS Exception: %v\n", ts, agentID, jsErr.String())
+					val := jsErr.Value().Export()
+					if obj, ok := val.(map[string]interface{}); ok {
+						msg, _ := obj["message"].(string)
+						errKey, _ := obj["error_key"].(string)
+						reqID, _ := obj["request_id"].(string)
+
+						if msg != "" {
+							formatted := fmt.Sprintf("[%s] JS Exception: %s", ts, msg)
+							if errKey != "" {
+								formatted += fmt.Sprintf(" (key: %s)", errKey)
+							}
+							if reqID != "" && reqID != "cli-internal" {
+								formatted += fmt.Sprintf(" [Req: %s]", reqID)
+							}
+							fmt.Fprintf(logger, "%s\n", formatted)
+						} else {
+							// Fallback to JSON stringification for unknown objects
+							jsonBytes, _ := json.MarshalIndent(obj, "    ", "  ")
+							fmt.Fprintf(logger, "[{%s}] [%s] JS Exception (Object): %s\n", ts, agentID, string(jsonBytes))
+						}
+					} else {
+						fmt.Fprintf(logger, "[{%s}] [%s] JS Exception: %v\n", ts, agentID, jsErr.String())
+					}
 				} else {
 					fmt.Fprintf(logger, "[{%s}] [%s] Execution failed: %v\n", ts, agentID, err)
 				}

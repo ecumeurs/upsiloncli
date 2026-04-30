@@ -20,11 +20,9 @@ upsilon.adminSection((admin) => {
         grade: "I",
         targeting: { 
             TargetType: "EnemyOnly", 
-            Range: 3, 
-            MaxRange: 3, 
-            MinRange: 0 
+            Range: { value: 0, max: 3 }
         }, 
-        costs: { MP: 3 },
+        costs: { MPLeech: 3 },
         effect: { Type: "Damage", Value: 10 },
         weight_positive: 10,
         weight_negative: 0,
