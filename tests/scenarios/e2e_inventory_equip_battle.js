@@ -41,7 +41,7 @@ upsilon.call("character_equip", { characterId: charId, item_id: invWeapon.id });
 
 // 3. Battle
 // We only need to join and check the initial state.
-upsilon.joinWaitMatch("1v1_PVP");
+upsilon.joinWaitMatch("1v1_PVE");
 
 const matchId = upsilon.getContext("match_id");
 let board = upsilon.waitNextTurn();
