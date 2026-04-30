@@ -2,28 +2,29 @@
 // @test-link [[uc_combat_turn]]
 // @test-link [[mech_initiative]]
 //
-// Validates the canonical turn loop: on each turn we should either move toward
-// the foe, attack when in reach, or pass when neither is possible. We delegate
-// to upsilon.autoBattleTurn (the one source of truth for that pattern) and
-// observe that all three action types are exercised before the match ends.
+// Validates the canonical turn loop in a 1v1 PVE environment: on each turn we
+// should either move toward the foe, attack when in reach, or pass when neither
+// is possible. We delegate to upsilon.autoBattleTurn (the one source of truth
+// for that pattern) and observe that all three action types are exercised
+// before the match ends.
 
 const agentIndex = upsilon.getAgentIndex();
 const botId = Math.floor(Math.random() * 10000) + "_" + agentIndex;
 const accountName = "turn_bot_" + botId;
 const password = "VerySecurePassword123!";
 
-upsilon.log(`[Bot-${agentIndex}] Starting CR-06: Combat Turn Management`);
+upsilon.log(`[Bot-${agentIndex}] Starting CR-06: Combat Turn Management (PVE)`);
 
 upsilon.bootstrapBot(accountName, password);
-const matchData = upsilon.joinWaitMatch("1v1_PVP");
-upsilon.syncGroup("combat_start", 2);
+// Join PVE match - starts instantly with engine-controlled AI
+const matchData = upsilon.joinWaitMatch("1v1_PVE");
 
 const seen = { move: false, attack: false, pass: false };
 let round = 0;
 
 while (!(seen.move && seen.attack && seen.pass)) {
     round++;
-    if (round > 80) {
+    if (round > 100) { // Increased budget for PVE
         upsilon.log(`[Bot-${agentIndex}] Round budget exhausted before all action types observed (move=${seen.move} attack=${seen.attack} pass=${seen.pass}).`);
         break;
     }
@@ -41,5 +42,5 @@ if (seen.move && seen.attack && seen.pass) {
 } else {
     // We don't fail outright: a match can legitimately end before pass is needed.
     // Match termination is an acceptable terminal state.
-    upsilon.log(`[Bot-${agentIndex}] CR-06 FINISHED — match ended before all three action types appeared.`);
+    upsilon.log(`[Bot-${agentIndex}] CR-06 FINISHED — match ended before all three action types appeared (seen: move=${seen.move}, attack=${seen.attack}, pass=${seen.pass})`);
 }

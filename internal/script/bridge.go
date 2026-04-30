@@ -159,6 +159,11 @@ func (a *Agent) jsCall(routeName string, params map[string]interface{}) (interfa
 	// Capture session state (tokens, IDs) from response
 	endpoint.SyncSession(resp, a.Session)
 
+	// AUTO-CLEANUP: If we just forfeited, clear the match ID from context so teardown doesn't try again.
+	if routeName == "game_forfeit" {
+		a.jsSetContext("match_id", "")
+	}
+
 	// Ensure WebSockets are synced if auth happened (token might have been set)
 	a.Listener.Sync()
 
