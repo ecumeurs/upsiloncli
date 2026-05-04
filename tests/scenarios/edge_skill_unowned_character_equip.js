@@ -12,7 +12,7 @@ const ownerName = "owner_eq_" + botId;
 upsilon.bootstrapBot(ownerName, password);
 const ownerProfile = upsilon.call("profile_get", {});
 const ownerCharId = ownerProfile.characters[0].id;
-const ownerSkill = upsilon.call("skill_roll", { characterId: ownerCharId });
+const ownerSkill = upsilon.call("character_skill_roll", { characterId: ownerCharId });
 upsilon.assert(ownerSkill && ownerSkill.id, "Owner must be able to roll a skill");
 upsilon.log(`[Bot-${agentIndex}] Owner character: ${ownerCharId}, skill: ${ownerSkill.id}`);
 

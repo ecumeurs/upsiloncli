@@ -30,7 +30,7 @@ type Agent struct {
 	GoTeardownHook func()
 	Shared       *SharedStore
 	Ctx          context.Context
-	lastConsumedVersion uint64
+	lastConsumedVersion int64
 	currentTurnEntityID string
 	hasAttackedThisTurn bool
 	isInAdminSection    bool
@@ -66,6 +66,7 @@ func NewAgent(id string, agentIdx, agentCount int, isLocal bool, baseURL string,
 		Shared:         shared,
 		eventQueue:     make(chan eventEnvelope, 100),
 		eventCallbacks: make(map[string][]goja.Callable),
+		lastConsumedVersion: -1,
 	}
 
 

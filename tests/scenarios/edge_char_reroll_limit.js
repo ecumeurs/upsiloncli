@@ -50,11 +50,11 @@ try {
     });
     upsilon.assert(false, "ERROR: 4th reroll was accepted!");
 } catch (e) {
-    upsilon.log(`[Bot-${agentIndex}] ✅ 4th reroll properly rejected: ${e.message}`);
+    upsilon.log(`[Bot-${agentIndex}] ✅ 4th reroll properly rejected: ${e.message} (Status: ${e.status})`);
 }
 
 // 4. Verify reroll count
-const updatedChar = upsilon.call("character_get", {
+const updatedChar = upsilon.call("profile_character", {
     characterId: charId
 });
 upsilon.log(`[Bot-${agentIndex}] Reroll count: ${updatedChar.reroll_count}`);

@@ -18,12 +18,12 @@ const profile = upsilon.call("profile_get", {});
 const charId = profile.characters[0].id;
 
 // Occupy the only slot
-const s1 = upsilon.call("skill_roll", { characterId: charId });
+const s1 = upsilon.call("character_skill_roll", { characterId: charId });
 upsilon.call("skill_equip", { characterId: charId, skillId: s1.id });
 upsilon.log(`[Bot-${agentIndex}] Slot 1 occupied by ${s1.id}`);
 
 // Acquire a second skill (inventory roll always succeeds)
-const s2 = upsilon.call("skill_roll", { characterId: charId });
+const s2 = upsilon.call("character_skill_roll", { characterId: charId });
 upsilon.assert(s2 && s2.id, "Second roll must succeed");
 
 // Attempt to equip — must be rejected (slot full)

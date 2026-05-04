@@ -207,10 +207,10 @@ func (l *Listener) listenLoop() {
 				}
 			}
 
-		case "board.updated":
+		case "board.updated", "turn.started", "game.started":
 			// Laravel payload: [[api_standard_envelope]] -> { data: { ...BoardState... } }
 			if l.Printer != nil {
-				l.Printer.WebSocket("board.updated", envelope.Data)
+				l.Printer.WebSocket(envelope.Event, envelope.Data)
 			}
 
 			data, err := l.unwrapEnvelope(envelope.Data)
@@ -395,6 +395,9 @@ func (l *Listener) notifyWaiters(eventName string, data json.RawMessage) {
 		}
 		return
 	}
+
+	l.waitMu.Lock()
+	defer l.waitMu.Unlock()
 
 	waiters, ok := l.waiters[eventName]
 	if !ok || len(waiters) == 0 {

@@ -31,7 +31,7 @@ upsilon.assertEquals(charDetail.skill_slots, 1, "Fresh character must have exact
 upsilon.log(`[Bot-${agentIndex}] Confirmed skill_slots = 1`);
 
 // 3. Roll first skill and equip (should succeed — 1 slot available)
-const s1 = upsilon.call("skill_roll", { characterId: charId });
+const s1 = upsilon.call("character_skill_roll", { characterId: charId });
 upsilon.assert(s1 && s1.id, "First roll must return a skill");
 
 const e1 = upsilon.call("skill_equip", { characterId: charId, skillId: s1.id });
@@ -39,7 +39,7 @@ upsilon.assert(e1.equipped, "First skill equip must succeed within the 1-slot li
 upsilon.log(`[Bot-${agentIndex}] First skill equipped: ${s1.id}`);
 
 // 4. Roll second skill into inventory (unlimited — rolls don't consume slots)
-const s2 = upsilon.call("skill_roll", { characterId: charId });
+const s2 = upsilon.call("character_skill_roll", { characterId: charId });
 upsilon.assert(s2 && s2.id, "Second roll must succeed (inventory is unlimited)");
 upsilon.assert(s2.id !== s1.id, "Second skill must be a distinct entry");
 upsilon.log(`[Bot-${agentIndex}] Second skill acquired: ${s2.id}`);

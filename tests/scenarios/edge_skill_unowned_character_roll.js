@@ -22,7 +22,7 @@ upsilon.bootstrapBot(attackerName, password);
 
 // Attacker tries to roll a skill for owner's character
 try {
-    upsilon.call("skill_roll", { characterId: ownerCharId });
+    upsilon.call("character_skill_roll", { characterId: ownerCharId });
     upsilon.assert(false, "ERROR: Rolling for another player's character must be rejected");
 } catch (e) {
     upsilon.log(`[Bot-${agentIndex}] ✅ Roll on foreign character rejected: ${e.message}`);

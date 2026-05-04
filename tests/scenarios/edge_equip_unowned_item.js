@@ -39,11 +39,11 @@ upsilon.log(`[Bot-${agentIndex}] Starting EC-52: Equip Unowned Item`);
 
 // Attempt to equip User B's item to User A's character
 try {
-    upsilon.call("character_equip", { character_id: charA, item_id: itemB });
+    upsilon.call("character_equip", { characterId: charA, item_id: itemB });
     upsilon.assert(false, "ERROR: Equipping unowned item was accepted!");
 } catch (e) {
-    upsilon.log(`[Bot-${agentIndex}] ✅ Equip properly rejected: ${e.message}`);
-    upsilon.assert(e.message.includes("403") || e.message.includes("404"), "Error must be 403 Forbidden or 404 Not Found");
+    upsilon.log(`[Bot-${agentIndex}] ✅ Equip properly rejected: ${e.message} (Status: ${e.status})`);
+    upsilon.assert(e.status === 403 || e.status === 404, "Error must be 403 Forbidden or 404 Not Found");
 }
 
 upsilon.log(`[Bot-${agentIndex}] EC-52: EQUIP UNOWNED ITEM PASSED.`);

@@ -351,7 +351,7 @@ func (a *Agent) jsWaitNextTurn() interface{} {
 	// 1. Check if it is already our turn based on the current session state
 	// This prevents deadlocks if the match just started and it is already our turn.
 	if board := a.Listener.Session.LastBoard(); board != nil {
-		if board.CurrentPlayerIsSelf && board.Version > a.lastConsumedVersion {
+		if board.CurrentPlayerIsSelf && int64(board.Version) > a.lastConsumedVersion {
 			// Sync turn memory if resuming
 			if a.currentTurnEntityID != board.CurrentEntityID {
 				a.currentTurnEntityID = board.CurrentEntityID
@@ -362,14 +362,14 @@ func (a *Agent) jsWaitNextTurn() interface{} {
 			}
 
 			a.jsLog(fmt.Sprintf("--- Resume Turn! Already acting with %s (v%d) ---", a.getTurnLogInfo(board), board.Version))
-			a.lastConsumedVersion = board.Version
+			a.lastConsumedVersion = int64(board.Version)
 			return a.VM.ToValue(board)
 		}
 	}
 
 	for {
 		// Wait for either tactical progression or game termination
-		eventData, eventName, err := a.Listener.WaitForAnyData(a.Ctx, []string{"board.updated", "game.ended"}, 60000)
+		eventData, eventName, err := a.Listener.WaitForAnyData(a.Ctx, []string{"board.updated", "turn.started", "game.started", "game.ended"}, 60000)
 		if err != nil {
 			a.throwStructuredError("Turn wait timed out or failed: " + err.Error())
 		}
@@ -385,6 +385,7 @@ func (a *Agent) jsWaitNextTurn() interface{} {
 			}
 			a.jsLog(fmt.Sprintf("Match termination event received.%s Exiting battle loop.", winnerMsg))
 			a.jsSetContext("match_id", "") // Clear to prevent teardown forfeit
+			a.lastConsumedVersion = -1     // Reset version tracking for next match
 			return nil
 		}
 
@@ -405,12 +406,13 @@ func (a *Agent) jsWaitNextTurn() interface{} {
 			}
 			a.jsLog(fmt.Sprintf("Match finished flag detected in update.%s Exiting battle loop.", winnerMsg))
 			a.jsSetContext("match_id", "") // Clear to prevent teardown forfeit
+			a.lastConsumedVersion = -1     // Reset version tracking for next match
 			return nil
 		}
 
 		// Double-check ownership via session data (hydrated by Listener)
 		board := a.Listener.Session.LastBoard()
-		if board != nil && board.CurrentPlayerIsSelf && board.Version > a.lastConsumedVersion {
+		if board != nil && board.CurrentPlayerIsSelf && int64(board.Version) > a.lastConsumedVersion {
 			// INTERNAL TURN MEMORY MANAGEMENT
 			if a.currentTurnEntityID != board.CurrentEntityID {
 				a.jsLog(fmt.Sprintf("Initiative shift: %s -> %s. Clearing turn memory.", a.currentTurnEntityID, board.CurrentEntityID))
@@ -424,7 +426,7 @@ func (a *Agent) jsWaitNextTurn() interface{} {
 			}
 
 			a.jsLog(fmt.Sprintf("--- My Turn! Acting with %s (v%d) ---", a.getTurnLogInfo(board), board.Version))
-			a.lastConsumedVersion = board.Version
+			a.lastConsumedVersion = int64(board.Version)
 			return a.VM.ToValue(boardMap)
 		}
 

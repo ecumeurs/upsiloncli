@@ -26,7 +26,7 @@ const charId = profile.characters[0].id;
 upsilon.log(`[Bot-${agentIndex}] Character: ${charId}`);
 
 // 2. Roll
-const acquired = upsilon.call("skill_roll", { characterId: charId });
+const acquired = upsilon.call("character_skill_roll", { characterId: charId });
 upsilon.assert(acquired && acquired.id, "Roll must return a skill with an ID");
 upsilon.assertEquals(acquired.source, "roll", "Acquired skill source must be 'roll'");
 upsilon.assert(acquired.instance_data, "Acquired skill must have instance_data snapshot");

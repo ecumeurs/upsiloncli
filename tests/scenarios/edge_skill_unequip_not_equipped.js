@@ -15,7 +15,7 @@ const profile = upsilon.call("profile_get", {});
 const charId = profile.characters[0].id;
 
 // Roll a skill — do NOT equip it
-const skill = upsilon.call("skill_roll", { characterId: charId });
+const skill = upsilon.call("character_skill_roll", { characterId: charId });
 upsilon.assert(skill && skill.id, "Roll must return a skill");
 upsilon.assert(!skill.equipped, "Freshly rolled skill must be unequipped");
 upsilon.log(`[Bot-${agentIndex}] Skill rolled (unequipped): ${skill.id}`);

@@ -23,7 +23,7 @@ func (e *SkillTemplateList) Auth() bool          { return true }
 func (e *SkillTemplateList) Params() []Param     { return nil }
 
 func (e *SkillTemplateList) Next() []string {
-	return []string{"skill_template_get", "skill_roll"}
+	return []string{"skill_template_get", "character_skill_roll"}
 }
 
 func (e *SkillTemplateList) ExecuteRaw(client *api.Client, sess *session.Session, inputs map[string]string) (*api.Response, error) {
@@ -82,7 +82,7 @@ func (e *CharacterSkillList) Params() []Param {
 }
 
 func (e *CharacterSkillList) Next() []string {
-	return []string{"skill_equip", "skill_unequip", "skill_roll"}
+	return []string{"skill_equip", "skill_unequip", "character_skill_roll"}
 }
 
 func (e *CharacterSkillList) ExecuteRaw(client *api.Client, sess *session.Session, inputs map[string]string) (*api.Response, error) {
@@ -106,7 +106,7 @@ func (e *CharacterSkillList) Execute(client *api.Client, sess *session.Session, 
 // SkillRoll implements Endpoint for POST /api/v1/profile/character/{characterId}/skills/roll.
 type SkillRoll struct{}
 
-func (e *SkillRoll) Name() string        { return "skill_roll" }
+func (e *SkillRoll) Name() string        { return "character_skill_roll" }
 func (e *SkillRoll) Description() string { return "Roll (acquire) a new random skill for a character" }
 func (e *SkillRoll) Method() string      { return "POST" }
 func (e *SkillRoll) Path() string {

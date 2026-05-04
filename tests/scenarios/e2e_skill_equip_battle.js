@@ -24,7 +24,7 @@ upsilon.assert(profile.characters && profile.characters.length > 0, "Bot must ha
 const charId = profile.characters[0].id;
 
 // 2. Roll & Equip
-const acquired = upsilon.call("skill_roll", { characterId: charId });
+const acquired = upsilon.call("character_skill_roll", { characterId: charId });
 upsilon.assert(acquired && acquired.id, "Roll must return a skill");
 
 const equipped = upsilon.call("skill_equip", { characterId: charId, skillId: acquired.id });
