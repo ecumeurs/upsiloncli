@@ -31,11 +31,8 @@ try {
     upsilon.call("skill_equip", { characterId: charId, skillId: s2.id });
     upsilon.assert(false, "ERROR: Equipping past slot limit must be rejected");
 } catch (e) {
-    upsilon.log(`[Bot-${agentIndex}] ✅ Correctly rejected: ${e.message}`);
-    upsilon.assert(
-        e.message.includes("422") || e.message.toLowerCase().includes("slot"),
-        "Rejection must be 422 / slot-full"
-    );
+    upsilon.log(`[Bot-${agentIndex}] ✅ Correctly rejected: ${e.message} (Status: ${e.status})`);
+    upsilon.assert(e.status === 422, "Rejection must be 422 Unprocessable Entity");
 }
 
 upsilon.log(`[Bot-${agentIndex}] EC: SKILL SLOT FULL PASSED.`);

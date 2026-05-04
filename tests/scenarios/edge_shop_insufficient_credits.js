@@ -32,8 +32,8 @@ try {
     upsilon.call("shop_purchase", { shop_item_id: armor.id });
     upsilon.assert(false, "ERROR: Purchase with 0 credits was accepted!");
 } catch (e) {
-    upsilon.log(`[Bot-${agentIndex}] ✅ Purchase properly rejected: ${e.message}`);
-    upsilon.assert(e.message.includes("422") || e.message.toLowerCase().includes("insufficient"), "Error must be 422/Insufficient Credits");
+    upsilon.log(`[Bot-${agentIndex}] ✅ Purchase properly rejected: ${e.message} (Status: ${e.status})`);
+    upsilon.assert(e.status === 422, "Error must be 422 Unprocessable Entity");
 }
 
 upsilon.log(`[Bot-${agentIndex}] EC-49: SHOP PURCHASE INSUFFICIENT CREDITS PASSED.`);

@@ -175,6 +175,7 @@ func (a *Agent) throwStructuredError(msg string) {
 	panic(a.VM.ToValue(map[string]interface{}{
 		"success":    false,
 		"message":    msg,
+		"status":     500,
 		"request_id": "cli-internal",
 		"data":       nil,
 	}))
