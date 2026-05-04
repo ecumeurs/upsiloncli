@@ -1,6 +1,6 @@
 // upsiloncli/tests/scenarios/e2e_skill_roll_naming.js
 // @test-link [[api_character_skill_inventory]]
-// @test-link [[shared:req_skill_generation_overhaul]]
+// @test-link [[shared:req_skill_generation]]
 // @test-link [[upsilonbattle:mech_skill_name_generation]]
 //
 // Validates that the skill roll pipeline produces:
