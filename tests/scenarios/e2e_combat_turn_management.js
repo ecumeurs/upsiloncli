@@ -21,7 +21,7 @@ const matchData = upsilon.joinWaitMatch("1v1_PVE");
 
 const seen = { move: false, attack: false, pass: false };
 let round = 0;
-
+upsilon.log(`[Bot-${agentIndex}] Entering loop (seen: move=${seen.move}, attack=${seen.attack}, pass=${seen.pass})`);
 while (!(seen.move && seen.attack && seen.pass)) {
     round++;
     if (round > 100) { // Increased budget for PVE
@@ -29,13 +29,18 @@ while (!(seen.move && seen.attack && seen.pass)) {
         break;
     }
 
+    upsilon.log(`[Bot-${agentIndex}] Round ${round}: waiting for turn...`);
     const board = upsilon.waitNextTurn();
-    if (!board) break; // match ended
+    if (!board) {
+        upsilon.log(`[Bot-${agentIndex}] Round ${round}: waitNextTurn returned null, breaking loop.`);
+        break;
+    }
 
     const report = upsilon.autoBattleTurn(matchData.match_id);
     seen[report.action] = true;
     upsilon.log(`[Bot-${agentIndex}] Round ${round}: action=${report.action} target=${report.target_id || "-"} pathLen=${report.path_len}`);
 }
+upsilon.log(`[Bot-${agentIndex}] Exited loop after ${round} rounds.`);
 
 if (seen.move && seen.attack && seen.pass) {
     upsilon.log(`[Bot-${agentIndex}] CR-06 PASSED — observed move/attack/pass.`);

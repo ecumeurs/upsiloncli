@@ -396,9 +396,6 @@ func (l *Listener) notifyWaiters(eventName string, data json.RawMessage) {
 		return
 	}
 
-	l.waitMu.Lock()
-	defer l.waitMu.Unlock()
-
 	waiters, ok := l.waiters[eventName]
 	if !ok || len(waiters) == 0 {
 		// No one is waiting, buffer it
