@@ -1,4 +1,6 @@
 bin/*
-*.log*.db
+*.log
+*.db
 *.sqlite
 *.sqlite3
+*.log
