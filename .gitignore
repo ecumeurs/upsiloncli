@@ -3,5 +3,3 @@ bin/*
 *.db
 *.sqlite
 *.sqlite3
-
-pipeline_output/
