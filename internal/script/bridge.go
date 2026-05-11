@@ -10,7 +10,10 @@ import (
 	"github.com/ecumeurs/upsiloncli/internal/endpoint"
 )
 
+// bindJSAPI registers the "upsilon" global object in the JS runtime,
+// exposing internal Go methods as JS functions for scenario scripting.
 func (a *Agent) bindJSAPI() {
+
 	upsilonObj := map[string]interface{}{
 		"call":         a.jsCall,
 		"waitForEvent": a.jsWaitForEvent,
@@ -87,11 +90,16 @@ func (a *Agent) bindJSAPI() {
 	a.VM.Set("upsilon", upsilonObj)
 }
 
+// jsLog outputs a message to the agent's display printer.
 func (a *Agent) jsLog(msg interface{}) {
+
 	a.Display.Print(fmt.Sprintf("%v", msg))
 }
 
+// jsCall executes a named API endpoint with the provided parameters,
+// enforcing administrative security boundaries and turn-based constraints.
 func (a *Agent) jsCall(routeName string, params map[string]interface{}) (interface{}, error) {
+
 	ep := a.Registry.Get(routeName)
 	if ep == nil {
 		a.throwStructuredError(fmt.Sprintf("unknown route: %s", routeName))
@@ -170,7 +178,9 @@ func (a *Agent) jsCall(routeName string, params map[string]interface{}) (interfa
 	return resp.Data, nil
 }
 
+// throwStructuredError panics with a standard JSON envelope to be caught by the JS runtime.
 func (a *Agent) throwStructuredError(msg string) {
+
 	a.jsLog(fmt.Sprintf("[INTERNAL_ERROR] %s", msg))
 	panic(a.VM.ToValue(map[string]interface{}{
 		"success":    false,
@@ -181,32 +191,46 @@ func (a *Agent) throwStructuredError(msg string) {
 	}))
 }
 
+// jsGetContext retrieves a value from the agent's session context.
 func (a *Agent) jsGetContext(key string) string {
+
 	val, _ := a.Session.Get(key)
 	return val
 }
 
+// jsSetContext stores a value in the agent's session context.
 func (a *Agent) jsSetContext(key, value string) {
+
 	a.Session.Set(key, value)
 }
 
+// jsGetEnv retrieves an environment variable from the OS.
 func (a *Agent) jsGetEnv(key string) string {
+
 	return os.Getenv(key)
 }
 
+// jsGetAgentIndex returns the 0-indexed position of the agent in the farm.
 func (a *Agent) jsGetAgentIndex() int {
+
 	return a.AgentIndex
 }
 
+// jsGetAgentCount returns the total number of agents running in the current farm.
 func (a *Agent) jsGetAgentCount() int {
+
 	return a.AgentCount
 }
 
+// jsSetShared stores a value in the farm-wide shared memory.
 func (a *Agent) jsSetShared(key string, value interface{}) {
+
 	a.Shared.Set(key, value)
 }
 
+// jsGetShared retrieves a value from the farm-wide shared memory.
 func (a *Agent) jsGetShared(key string) interface{} {
+
 	val, ok := a.Shared.Get(key)
 	if !ok {
 		return nil

@@ -6,6 +6,16 @@ import argparse
 from datetime import datetime
 
 def clean_line(line):
+    """
+    Removes log prefixes (timestamps, bot IDs) and ANSI escape codes from a log line.
+    
+    Args:
+        line (str): The raw log line to clean.
+        
+    Returns:
+        str: The cleaned and stripped log line.
+    """
+
     # Remove prefix like [{2026-04-14T06:16:18Z}] [Bot-01] 
     line = re.sub(r'^\[\{[^}]+\}\]\s+\[[^\]]+\]\s+', '', line)
     # Remove ANSI escape codes
@@ -13,6 +23,16 @@ def clean_line(line):
     return line.strip()
 
 def render_ascii_board(gs):
+    """
+    Renders a text-based ASCII representation of the tactical grid and entities.
+    
+    Args:
+        gs (dict): The game state data containing grid and players/entities.
+        
+    Returns:
+        str: A multi-line string representing the board.
+    """
+
     if not gs or 'grid' not in gs:
         return "  [No Grid Data Available]"
     
@@ -71,6 +91,16 @@ def render_ascii_board(gs):
     return "\n".join(output)
 
 def print_bot_summary(bot_id, data, tactical=False):
+    """
+    Prints a diagnostic summary for a specific bot, including its outcome, casualties, 
+    survivors, and errors.
+    
+    Args:
+        bot_id (str): The identifier of the bot.
+        data (dict): Collected bot data including entities, deaths, and errors.
+        tactical (bool): If True, includes detailed tactical action logs and board states.
+    """
+
     print(f"\n>>>> STATUS FOR {bot_id} <<<<")
     
     is_finished = data.get('game_finished', False)
@@ -147,6 +177,17 @@ def print_bot_summary(bot_id, data, tactical=False):
     sys.stdout.flush()
 
 def parse_log(filepath, tactical=False):
+    """
+    Parses a static log file and extracts diagnostic summaries for all bots found.
+    
+    Args:
+        filepath (str): Path to the log file to parse.
+        tactical (bool): Whether to perform detailed tactical analysis.
+        
+    Returns:
+        int: Total number of errors detected across all bots.
+    """
+
     bots = {}
     completed_bots = set()
     total_errors = 0
@@ -328,6 +369,16 @@ def parse_log(filepath, tactical=False):
     return total_errors
 
 def count_bot_errors(data):
+    """
+    Calculates the error count for a bot based on explicit errors and match incompleteness.
+    
+    Args:
+        data (dict): The bot's collected state data.
+        
+    Returns:
+        int: The number of errors identified.
+    """
+
     errs = len(data['errors'])
     if not data.get('game_finished'):
         # Check if incomplete
@@ -340,6 +391,17 @@ def count_bot_errors(data):
     return errs
 
 def process_game_state(bot_data, gs, line_no, tactical):
+    """
+    Updates the internal bot tracking state with new game state information, 
+    detecting deaths, damage, and tactical actions.
+    
+    Args:
+        bot_data (dict): The tracking data for the specific bot.
+        gs (dict): The raw game state DTO.
+        line_no (int): Current log line number for traceability.
+        tactical (bool): Whether to record tactical feedback.
+    """
+
     players = gs.get('players', [])
     entities = []
     nick_map = {}
@@ -430,6 +492,13 @@ def process_game_state(bot_data, gs, line_no, tactical):
 
 class BotState:
     def __init__(self, bot_id):
+        """
+        Initializes a new BotState tracker.
+        
+        Args:
+            bot_id (str): The unique identifier for this bot.
+        """
+
         self.bot_id = bot_id
         self.entities = {} # id -> data
         self.nicknames = {} # nickname -> info
@@ -441,6 +510,13 @@ class BotState:
         self.owner_map = {} # entity_id -> nickname
 
     def update_from_board(self, board):
+        """
+        Updates the bot's known state (entities, players, deaths) from a board update.
+        
+        Args:
+            board (dict): The board data from a WebSocket event or API reply.
+        """
+
         if not board: return
         self.game_finished = board.get('game_finished', False)
         self.winner_team = board.get('winner_team_id')
@@ -480,6 +556,13 @@ class BotState:
         self.last_entity_ids = new_seen
 
     def get_summary(self):
+        """
+        Generates a summary string for the final state of the bot.
+        
+        Returns:
+            str: The formatted summary.
+        """
+
         summary = [f"\n>>>> FINAL RESULT FOR {self.bot_id} <<<<"]
         if self.winner_team is not None:
             summary.append(f"Outcome: CONCLUDED (Winner: Team {self.winner_team} - {self.team_nicknames.get(self.winner_team, 'Unknown')})")
@@ -496,6 +579,15 @@ class BotState:
         return "\n".join(summary)
 
 def parse_log_stream(stream, args):
+    """
+    Parses a continuous stream of log data (e.g., from stdin) and prints 
+    tactical updates in real-time.
+    
+    Args:
+        stream (iterable): The stream of log lines.
+        args (argparse.Namespace): Command-line arguments.
+    """
+
     bot_pattern = re.compile(r'\[(Bot-\d+)\]')
     
     tactical_patterns = [
@@ -518,6 +610,16 @@ def parse_log_stream(stream, args):
     last_bot_id = None
     
     def get_state(bid):
+        """
+        Helper to retrieve or initialize the BotState for a given ID.
+        
+        Args:
+            bid (str): The bot identifier.
+            
+        Returns:
+            BotState: The state tracker for the bot.
+        """
+
         if bid not in bots:
             bots[bid] = BotState(bid)
         return bots[bid]

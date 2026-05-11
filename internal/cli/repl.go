@@ -269,7 +269,9 @@ func (c *CLI) executeEndpoint(name string, cliArgs []string) {
 	}
 }
 
+// handleStatus performs a health check on the connectivity layers (API, Session, WebSocket).
 func (c *CLI) handleStatus() {
+
 	fmt.Println()
 	fmt.Printf("  %sEnd-to-End Connectivity Status%s\n", display.Bold, display.Reset)
 	fmt.Printf("  %s%s%s\n", display.Dim, strings.Repeat("─", 50), display.Reset)
@@ -375,7 +377,9 @@ func (c *CLI) prompt(name, hint, defaultVal string, required, secret bool) strin
 	}
 }
 
+// printBanner displays the application splash screen.
 func (c *CLI) printBanner() {
+
 	fmt.Println()
 	fmt.Println(display.Cyan + display.Bold + "  ╔══════════════════════════════════════════╗" + display.Reset)
 	fmt.Println(display.Cyan + display.Bold + "  ║       ⌬ UpsilonCLI — API Explorer        ║" + display.Reset)
@@ -385,7 +389,9 @@ func (c *CLI) printBanner() {
 	fmt.Println("  Type 'help' for commands, 'routes' to see all endpoints.")
 }
 
+// printHelp displays the list of available CLI commands and their descriptions.
 func (c *CLI) printHelp() {
+
 	fmt.Println()
 	fmt.Printf("  %sAvailable Commands%s\n", display.Bold, display.Reset)
 	fmt.Printf("  %s%s%s\n", display.Dim, strings.Repeat("─", 50), display.Reset)

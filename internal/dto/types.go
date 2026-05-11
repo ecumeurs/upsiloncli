@@ -36,14 +36,19 @@ type Flex[T any] struct {
 	Data T
 }
 
+// UnmarshalJSON handles decoding Flex types, allowing for empty arrays [] 
+// to be treated as nil data for flexible JSON compatibility.
 func (f *Flex[T]) UnmarshalJSON(data []byte) error {
+
 	if string(data) == "[]" {
 		return nil
 	}
 	return json.Unmarshal(data, &f.Data)
 }
 
+// MarshalJSON encodes the inner data of the Flex container.
 func (f Flex[T]) MarshalJSON() ([]byte, error) {
+
 	return json.Marshal(f.Data)
 }
 
@@ -55,7 +60,10 @@ type PropertyDTO struct {
 	SValue *string  `json:"svalue,omitempty"`
 }
 
+// UnmarshalJSON implements custom decoding for properties, supporting both 
+// structured objects and primitive fallbacks (int, float, bool, string).
 func (p *PropertyDTO) UnmarshalJSON(data []byte) error {
+
 	// Handle raw empty array [] (common mismatch from engine/Laravel)
 	if string(data) == "[]" {
 		return nil

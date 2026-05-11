@@ -118,7 +118,10 @@ func (l *Listener) Stop() {
 	}
 }
 
+// listenLoop is the primary message reading loop that processes incoming WebSocket
+// events and dispatches them to specialized handlers or waiters.
 func (l *Listener) listenLoop() {
+
 	l.mu.Lock()
 	conn := l.Conn
 	l.mu.Unlock()
@@ -374,7 +377,10 @@ func (l *Listener) unwrapEnvelope(raw json.RawMessage) (interface{}, error) {
 	return envelope.Data, nil
 }
 
+// notifyWaiters dispatches a received event to any active blockers (WaitForData) 
+// and triggers registered hooks.
 func (l *Listener) notifyWaiters(eventName string, data json.RawMessage) {
+
 	l.waitMu.Lock()
 	defer l.waitMu.Unlock()
 
@@ -467,7 +473,10 @@ func (l *Listener) IsSubscribed(channel string) bool {
 	return l.subsAck[channel]
 }
 
+// subscribeToUserChannel handles the automatic subscription to the private user 
+// notifications channel based on the current session.
 func (l *Listener) subscribeToUserChannel() {
+
 	key := l.Session.WSChannelKey()
 	if key == "" {
 		return
@@ -475,11 +484,17 @@ func (l *Listener) subscribeToUserChannel() {
 	l.ensureSubscription(fmt.Sprintf("private-user.%s", key))
 }
 
+// subscribeToArenaChannel handles the automatic subscription to match-specific 
+// tactical updates.
 func (l *Listener) subscribeToArenaChannel(matchID string) {
+
 	l.ensureSubscription(fmt.Sprintf("private-arena.%s", matchID))
 }
 
+// ensureSubscription performs the authenticated handshake for a private channel 
+// and sends the subscription request if not already subscribed.
 func (l *Listener) ensureSubscription(channel string) {
+
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
@@ -509,7 +524,10 @@ func (l *Listener) ensureSubscription(channel string) {
 	}
 }
 
+// getAuth retrieves a WebSocket authentication signature from the Laravel 
+// backend for private channel access.
 func (l *Listener) getAuth(channel string) (string, error) {
+
 	token := l.Session.Token()
 	if token == "" {
 		return "", fmt.Errorf("not authenticated")
@@ -565,7 +583,10 @@ func (l *Listener) getAuth(channel string) (string, error) {
 	return result.Auth, nil
 }
 
+// initializeMatch hydrates the local session state with full match details 
+// (grid, players) when a match is first discovered.
 func (l *Listener) initializeMatch(matchID string) {
+
 	// Call GET /api/v1/game/{id}
 	resp, err := l.Client.Get(fmt.Sprintf("/api/v1/game/%s", matchID))
 	if err != nil {

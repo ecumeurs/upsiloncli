@@ -138,12 +138,16 @@ func (c *Client) Do(method, path string, body interface{}) (*Response, error) {
 }
 
 // Get is a convenience wrapper for GET requests.
+// Get is a convenience wrapper for performing GET requests to the API.
 func (c *Client) Get(path string) (*Response, error) {
+
 	return c.Do("GET", path, nil)
 }
 
 // GetWithParams is a convenience wrapper for GET requests with query parameters.
+// GetWithParams is a convenience wrapper for performing GET requests with URL query parameters.
 func (c *Client) GetWithParams(path string, params map[string]string) (*Response, error) {
+
 	if len(params) > 0 {
 		var q []string
 		for k, v := range params {
@@ -155,21 +159,29 @@ func (c *Client) GetWithParams(path string, params map[string]string) (*Response
 }
 
 // Post is a convenience wrapper for POST requests.
+// Post is a convenience wrapper for performing POST requests to the API.
 func (c *Client) Post(path string, body interface{}) (*Response, error) {
+
 	return c.Do("POST", path, body)
 }
 
 // Delete is a convenience wrapper for DELETE requests.
+// Delete is a convenience wrapper for performing DELETE requests to the API.
 func (c *Client) Delete(path string) (*Response, error) {
+
 	return c.Do("DELETE", path, nil)
 }
 
 // Put is a convenience wrapper for PUT requests.
+// Put is a convenience wrapper for performing PUT requests to the API.
 func (c *Client) Put(path string, body interface{}) (*Response, error) {
+
 	return c.Do("PUT", path, body)
 }
 
 // Patch is a convenience wrapper for PATCH requests.
+// Patch is a convenience wrapper for performing PATCH requests to the API.
 func (c *Client) Patch(path string, body interface{}) (*Response, error) {
+
 	return c.Do("PATCH", path, body)
 }

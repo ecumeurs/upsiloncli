@@ -8,7 +8,9 @@ import (
 	"github.com/ecumeurs/upsiloncli/internal/dto"
 )
 
+// flattenEntities extracts all entities from all players into a single flat slice.
 func (a *Agent) flattenEntities(board *dto.BoardState) []dto.Entity {
+
 	var all []dto.Entity
 	if board == nil {
 		return all
@@ -19,7 +21,9 @@ func (a *Agent) flattenEntities(board *dto.BoardState) []dto.Entity {
 	return all
 }
 
+// jsFindPath provides JS access to the A* pathfinding algorithm.
 func (a *Agent) jsFindPath(call goja.FunctionCall) goja.Value {
+
 	if len(call.Arguments) < 3 {
 		return a.VM.ToValue(nil)
 	}
@@ -86,7 +90,9 @@ func (a *Agent) jsPlanTravelToward(call goja.FunctionCall) goja.Value {
 
 // --- Tactical Utility Implementations ---
 
+// jsMyPlayer returns the player object corresponding to the current agent.
 func (a *Agent) jsMyPlayer() interface{} {
+
 	parts := a.Session.Participants()
 	for _, p := range parts {
 		if p.IsSelf {
@@ -96,7 +102,9 @@ func (a *Agent) jsMyPlayer() interface{} {
 	return nil
 }
 
+// jsCurrentPlayer returns the player whose turn it currently is.
 func (a *Agent) jsCurrentPlayer() interface{} {
+
 	board := a.Session.LastBoard()
 	if board == nil {
 		return nil
@@ -118,7 +126,9 @@ func (a *Agent) jsCurrentPlayer() interface{} {
 	return nil
 }
 
+// jsCurrentCharacter returns the entity whose turn it currently is, decorated with turn memory.
 func (a *Agent) jsCurrentCharacter() interface{} {
+
 	board := a.Session.LastBoard()
 	if board == nil || board.Players == nil {
 		return nil
@@ -149,7 +159,9 @@ func (a *Agent) decorateEntity(e dto.Entity, board *dto.BoardState) interface{} 
 	return res
 }
 
+// jsMyCharacters returns all entities owned by the current agent's player.
 func (a *Agent) jsMyCharacters() []dto.Entity {
+
 	board := a.Session.LastBoard()
 	if board == nil {
 		return nil
@@ -163,7 +175,9 @@ func (a *Agent) jsMyCharacters() []dto.Entity {
 	return mine
 }
 
+// jsMyAllies returns a list of players on the same team as the current agent.
 func (a *Agent) jsMyAllies() []dto.Player {
+
 	board := a.Session.LastBoard()
 	if board == nil {
 		return nil
@@ -192,7 +206,9 @@ func (a *Agent) jsMyAllies() []dto.Player {
 	return allies
 }
 
+// jsMyAlliesCharacters returns all entities owned by the agent's allies.
 func (a *Agent) jsMyAlliesCharacters() []dto.Entity {
+
 	allies := a.jsMyAllies()
 	var all []dto.Entity
 	for _, p := range allies {
@@ -201,7 +217,9 @@ func (a *Agent) jsMyAlliesCharacters() []dto.Entity {
 	return all
 }
 
+// jsMyFoes returns a list of players on teams other than the current agent's.
 func (a *Agent) jsMyFoes() []dto.Player {
+
 	board := a.Session.LastBoard()
 	if board == nil {
 		return nil
@@ -230,7 +248,9 @@ func (a *Agent) jsMyFoes() []dto.Player {
 	return foes
 }
 
+// jsMyFoesCharacters returns all entities owned by the agent's enemies.
 func (a *Agent) jsMyFoesCharacters() []dto.Entity {
+
 	foes := a.jsMyFoes()
 	var all []dto.Entity
 	for _, p := range foes {
@@ -239,7 +259,9 @@ func (a *Agent) jsMyFoesCharacters() []dto.Entity {
 	return all
 }
 
+// jsCellContentAt returns the obstacle and entity data for a specific (x, y) coordinate.
 func (a *Agent) jsCellContentAt(x, y int) interface{} {
+
 	board := a.Session.LastBoard()
 	if board == nil {
 		return nil
@@ -304,7 +326,9 @@ func (a *Agent) resolveGridFromArg(v goja.Value) *dto.Grid {
 // (see [[ISS-079]]) without touching every test. The returned object is
 // { x, y, obstacle, height, entity_id } or null if out of bounds / no board.
 // @spec-link [[ISS-079]]
+// jsCellAt provides a normalized way for scripts to read cell properties (x, y, obstacle, height, entity_id).
 func (a *Agent) jsCellAt(call goja.FunctionCall) goja.Value {
+
 	if len(call.Arguments) < 3 {
 		return goja.Null()
 	}
@@ -344,7 +368,9 @@ func (a *Agent) jsCellAt(call goja.FunctionCall) goja.Value {
 // with the cell object produced by jsCellAt. Returning a truthy value from the
 // callback stops iteration early, mirroring Array.prototype.some semantics.
 // @spec-link [[ISS-079]]
+// jsForEachCell iterates over every cell in the grid and invokes a callback.
 func (a *Agent) jsForEachCell(call goja.FunctionCall) goja.Value {
+
 	if len(call.Arguments) < 2 {
 		return goja.Undefined()
 	}
@@ -384,7 +410,9 @@ func (a *Agent) jsForEachCell(call goja.FunctionCall) goja.Value {
 }
 
 // jsDistance2D computes the 2D Manhattan distance between two positions.
+// jsDistance2D computes the Manhattan distance between two positions.
 func (a *Agent) jsDistance2D(call goja.FunctionCall) goja.Value {
+
 	if len(call.Arguments) < 2 {
 		return a.VM.ToValue(0)
 	}
@@ -399,7 +427,9 @@ func (a *Agent) jsDistance2D(call goja.FunctionCall) goja.Value {
 
 // jsHeightDifference computes the absolute vertical distance between two positions.
 // It requires a board/grid to look up the height at each position.
+// jsHeightDifference computes the vertical distance between two positions.
 func (a *Agent) jsHeightDifference(call goja.FunctionCall) goja.Value {
+
 	if len(call.Arguments) < 2 {
 		return a.VM.ToValue(0)
 	}
@@ -439,7 +469,9 @@ func (a *Agent) getHeightAt(board *dto.BoardState, x, y int) int {
 }
 
 // jsActiveHeightDifference computes the vertical distance between the current active character and a target position.
+// jsActiveHeightDifference computes the vertical distance between the active character and a target.
 func (a *Agent) jsActiveHeightDifference(call goja.FunctionCall) goja.Value {
+
 	if len(call.Arguments) < 1 {
 		return a.VM.ToValue(0)
 	}

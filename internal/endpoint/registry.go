@@ -2,6 +2,7 @@
 // that every API route handler must implement.
 package endpoint
 
+
 import (
 	"github.com/ecumeurs/upsiloncli/internal/api"
 	"github.com/ecumeurs/upsiloncli/internal/display"

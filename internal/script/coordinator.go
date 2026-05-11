@@ -16,7 +16,10 @@ import (
 	"github.com/ecumeurs/upsiloncli/internal/endpoint"
 )
 
+// RunFarm orchestrates multiple script execution agents in parallel, managing 
+// their lifecycle, logging, and graceful teardown on interrupt or timeout.
 func RunFarm(baseURL string, reg *endpoint.Registry, scriptPaths []string, logDir string, timeoutSecs int, quiet bool, isLocal bool) bool {
+
 	var wg sync.WaitGroup
 	sharedStore := NewSharedStore()
 

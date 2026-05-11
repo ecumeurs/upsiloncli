@@ -44,7 +44,10 @@ type eventEnvelope struct {
 	Data interface{}
 }
 
+// NewAgent initializes a new script execution agent with its own JS runtime,
+// API client, and WebSocket listener.
 func NewAgent(id string, agentIdx, agentCount int, isLocal bool, baseURL string, reg *endpoint.Registry, logger io.Writer, shared *SharedStore, quiet bool) *Agent {
+
 	sess := session.New()
 	printer := display.NewPrinterWithWriter(logger).
 		WithPrefix(fmt.Sprintf("[%s] ", id)).

@@ -1,4 +1,6 @@
 package endpoint
+// @lint-ignore-documentation
+
 
 // @spec-link [[api_skill_template_browse]]
 // @spec-link [[api_character_skill_inventory]]
