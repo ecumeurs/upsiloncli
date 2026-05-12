@@ -54,14 +54,17 @@ try {
 }
 
 // 4. Verify reroll count
-const updatedChar = upsilon.call("profile_character", {
-    characterId: charId
-});
-upsilon.log(`[Bot-${agentIndex}] Reroll count: ${updatedChar.reroll_count}`);
-upsilon.assertEquals(updatedChar.reroll_count, 3, "Reroll count should be 3");
+const profileInfo = upsilon.call("profile_get", {});
+upsilon.log(`[Bot-${agentIndex}] Reroll count: ${profileInfo.reroll_count}`);
+upsilon.assertEquals(profileInfo.reroll_count, 3, "Reroll count should be 3");
 
 // Cleanup
 upsilon.onTeardown(() => {
+    try {
+        upsilon.log(`[Bot-${agentIndex}] Leaving queue (if any)...`);
+        upsilon.call("matchmaking_leave", {});
+    } catch (e) {}
+
     try {
         upsilon.call("auth_delete", {});
         upsilon.log(`[Bot-${agentIndex}] ✅ Account cleaned up`);

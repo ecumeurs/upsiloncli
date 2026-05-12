@@ -36,8 +36,8 @@ invalidModes.forEach(mode => {
 });
 
 // 3. Join queue with valid game mode (should succeed)
-const validModes = ["1v1_PVP", "2v2_PVP", "1v1_PVE", "2v2_PVE"];
-const validMode = validModes[Math.floor(Math.random() * validModes.length)];
+// Use 2v2_PVE to ensure we stay 'queued' (1v1_PVE matches immediately)
+const validMode = "2v2_PVE";
 
 upsilon.log(`[Bot-${agentIndex}] Attempting to join queue with valid mode: ${validMode}...`);
 const validQueueResult = upsilon.call("matchmaking_join", { game_mode: validMode });
@@ -53,6 +53,11 @@ upsilon.log(`[Bot-${agentIndex}] ✅ Queue left successfully`);
 
 // Cleanup
 upsilon.onTeardown(() => {
+    try {
+        upsilon.log(`[Bot-${agentIndex}] Leaving queue (if any)...`);
+        upsilon.call("matchmaking_leave", {});
+    } catch (e) {}
+
     try {
         upsilon.call("auth_delete", {});
         upsilon.log(`[Bot-${agentIndex}] ✅ Account cleaned up`);
