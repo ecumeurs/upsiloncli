@@ -30,15 +30,15 @@ try {
     upsilon.assert(false, "ERROR: Queue join while in match was accepted!");
 } catch (e) {
     upsilon.log(`[Bot-${agentIndex}] ✅ Queue join while in match properly rejected: ${e.message}`);
-    // Verify 409 Conflict status code
-    if (e.status_code) {
-        upsilon.assertEquals(e.status_code, 409, "Expected 409 Conflict for queue while in match");
-    }
+    // Verify 409 Conflict status code (jsCall exposes it as e.status)
+    upsilon.assertEquals(e.status, 409, "Expected 409 Conflict for queue while in match");
 }
 
 // 3. Verify still in original match
+// upsilon.call() unwraps the API envelope and returns the `data` field directly,
+// so matchStatus is the data object (not {data: ...}).
 const matchStatus = upsilon.call("game_state", { id: sharedMatchId });
-upsilon.assert(matchStatus.data != null, "Match state should still be accessible");
+upsilon.assert(matchStatus != null && matchStatus.match_id != null, "Match state should still be accessible");
 upsilon.log(`[Bot-${agentIndex}] ✅ Still in original match`);
 
 // 4. Forfeit match and verify can now queue
@@ -54,21 +54,21 @@ upsilon.sleep(2000);
 // 5. Now can join queue
 upsilon.log(`[Bot-${agentIndex}] Attempting to join queue after forfeit...`);
 const newQueueResult = upsilon.call("matchmaking_join", { game_mode: "1v1_PVP" });
-upsilon.assertEquals(newQueueResult.status, "queued", "Should be able to queue after match ends");
+// Accept "queued" OR "matched": both prove we successfully re-entered matchmaking.
+// Two bots forfeiting and immediately re-queuing for 1v1_PVP will often match each other.
+upsilon.assert(
+    newQueueResult.status === "queued" || newQueueResult.status === "matched",
+    "Should be able to queue after match ends (got: " + newQueueResult.status + ")"
+);
 upsilon.log(`[Bot-${agentIndex}] ✅ Queue joined after match ended`);
 
-// Cleanup - leave queue
+// Cleanup - leave queue (auth_delete is handled by bootstrapBot's built-in teardown)
 upsilon.onTeardown(() => {
     try {
         upsilon.call("matchmaking_leave", {});
         upsilon.log(`[Bot-${agentIndex}] ✅ Queue left on teardown`);
     } catch (e) {
         upsilon.log(`Teardown cleanup error (ignored): ${e.message}`);
-    }
-    try {
-        upsilon.call("auth_delete", {});
-    } catch (e) {
-        // Ignore cleanup errors
     }
 });
 

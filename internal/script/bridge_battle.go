@@ -100,11 +100,53 @@ func (a *Agent) jsAutoBattleTurn(call goja.FunctionCall) goja.Value {
 		"path_len":  0,
 	}
 
+	// terminalErrorKeys are engine error keys that signal a game has ended
+	// between turn dispatch and action submission; they must be handled gracefully.
+	isTerminalGameError := func(r interface{}) (string, bool) {
+		// jsCall panics with a.VM.ToValue(map[string]interface{}{...}) which is a goja.Value.
+		// We need to export it back to a native map to read the error_key.
+		if gv, ok := r.(goja.Value); ok {
+			if exported := gv.Export(); exported != nil {
+				if errMap, ok := exported.(map[string]interface{}); ok {
+					if ek, _ := errMap["error_key"].(string); ek == "arena.notfound" || ek == "game.not.in.progress" {
+						return ek, true
+					}
+				}
+			}
+		}
+		return "", false
+	}
+
+	// safeAction wraps a game_action call and returns true if the action succeeded,
+	// false if the game ended concurrently (arena.notfound or game.not.in.progress).
+	// Any other error is re-panicked so scenarios still surface real failures.
+	safeAction := func(params map[string]interface{}) bool {
+		var gameOverKey string
+		func() {
+			defer func() {
+				if r := recover(); r != nil {
+					if ek, terminal := isTerminalGameError(r); terminal {
+						gameOverKey = ek
+						return
+					}
+					// Not a known terminal error — re-panic to surface real failures.
+					panic(r)
+				}
+			}()
+			a.jsCall("game_action", params)
+		}()
+		if gameOverKey != "" {
+			a.jsLog(fmt.Sprintf("Auto Action: Game ended concurrently (%s) — skipping.", gameOverKey))
+			a.jsSetContext("match_id", "") // Prevent teardown forfeit on a dead arena
+			return false
+		}
+		return true
+	}
+
 	// No foe? Pass.
 	if foe == nil {
 		a.jsLog(fmt.Sprintf("Auto Action: Pass (no Foe)"))
-
-		a.jsCall("game_action", map[string]interface{}{
+		safeAction(map[string]interface{}{
 			"id":        matchID,
 			"type":      "pass",
 			"entity_id": me.ID,
@@ -123,7 +165,7 @@ func (a *Agent) jsAutoBattleTurn(call goja.FunctionCall) goja.Value {
 		report["action"] = "attack"
 		report["target_id"] = foe.ID
 		a.jsLog(fmt.Sprintf("Auto Action: Attack (%d,%d)", foe.Position.X, foe.Position.Y))
-		a.jsCall("game_action", map[string]interface{}{
+		safeAction(map[string]interface{}{
 			"id":            matchID,
 			"type":          "attack",
 			"entity_id":     me.ID,
@@ -146,7 +188,7 @@ func (a *Agent) jsAutoBattleTurn(call goja.FunctionCall) goja.Value {
 		}
 		a.jsLog(fmt.Sprintf("Auto Action: Move %s", pathStr))
 
-		a.jsCall("game_action", map[string]interface{}{
+		safeAction(map[string]interface{}{
 			"id":            matchID,
 			"type":          "move",
 			"entity_id":     me.ID,
@@ -157,7 +199,7 @@ func (a *Agent) jsAutoBattleTurn(call goja.FunctionCall) goja.Value {
 
 	a.jsLog(fmt.Sprintf("Auto Action: Pass"))
 	// No path, out of reach, or already attacked: pass.
-	a.jsCall("game_action", map[string]interface{}{
+	safeAction(map[string]interface{}{
 		"id":        matchID,
 		"type":      "pass",
 		"entity_id": me.ID,
@@ -351,6 +393,18 @@ func (a *Agent) jsWaitNextTurn() interface{} {
 	// 1. Check if it is already our turn based on the current session state
 	// This prevents deadlocks if the match just started and it is already our turn.
 	if board := a.Listener.Session.LastBoard(); board != nil {
+		// Guard: if the game is already finished, return nil so the caller's loop exits
+		// cleanly instead of acting on a closed arena (which would yield arena.notfound).
+		if board.GameFinished && int64(board.Version) > a.lastConsumedVersion {
+			winnerMsg := ""
+			if board.WinnerTeamID != nil {
+				winnerMsg = fmt.Sprintf(" Winner: Team %d", *board.WinnerTeamID)
+			}
+			a.jsLog(fmt.Sprintf("Game already finished (fast-path).%s Exiting battle loop.", winnerMsg))
+			a.jsSetContext("match_id", "") // Clear to prevent teardown forfeit
+			a.lastConsumedVersion = -1
+			return nil
+		}
 		if board.CurrentPlayerIsSelf && int64(board.Version) > a.lastConsumedVersion {
 			// Sync turn memory if resuming
 			if a.currentTurnEntityID != board.CurrentEntityID {
