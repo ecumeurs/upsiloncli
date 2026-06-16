@@ -49,10 +49,12 @@ for (let i = 0; i < foesChars.length; i++) {
         upsilon.log(`WARNING: Foe ${e.name} stats are visible (Atk:${e.attack}, Def:${e.defense}, Mvt:${e.move})`);
     }
 
-    // Player ID Check (Privacy Concern)
-    if (e.player_id) {
-        upsilon.log(`CRITICAL PRIVACY CHECK: Foe ${e.name} has player_id: ${e.player_id}`);
-    }
+    // Player ID Masking Assertion — battleui's BoardStateResource must strip player_id
+    // before the board state is served externally (HTTP or WebSocket via Laravel Reverb).
+    // The CLI targets UPSILON_BASE_URL (battleui, port 8000), NOT upsilonapi (port 8081).
+    // A non-null player_id here means the masking gateway ([[arch_api_id_masking_gateway]])
+    // failed to strip the raw internal UUID and it leaked to the external surface.
+    upsilon.assert(!e.player_id, `PRIVACY VIOLATION: Foe ${e.name} has raw player_id exposed on the external (battleui) surface: ${e.player_id}`);
 
     initialPositions[e.id] = { x: e.position.x, y: e.position.y };
 }
