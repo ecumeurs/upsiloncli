@@ -7,10 +7,9 @@ version: 1.0
 status: STABLE
 priority: 1
 tags: [scripting, farm, qa]
-parents: []
+parents:
+  - [[req_tech_debt_backlog]]
 dependents:
-  - [[upsilonbattle:mechanic_script_lifecycle]]
-  - [[upsilonbattle:mechanic_shared_memory]]
   - [[mechanic_mech_script_admin_section]]
 ---
 
