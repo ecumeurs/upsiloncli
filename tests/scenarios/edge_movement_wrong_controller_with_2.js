@@ -42,7 +42,7 @@ if (agentIndex === 1) {
             upsilon.assert(false, "ERROR: Move with wrong controller accepted");
         } catch (e) {
             upsilon.log(`[Bot-${agentIndex}] ✅ Wrong-controller move rejected: ${e.message} (key=${e.error_key})`);
-            upsilon.assertEquals(e.error_key, "entity.controller.missmatch", "Expected entity.controller.missmatch");
+            upsilon.assertEquals(e.error_key, "entity.controller.mismatch", "Expected entity.controller.mismatch");
             rejected = true;
         }
 
