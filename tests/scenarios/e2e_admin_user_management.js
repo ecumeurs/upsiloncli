@@ -15,7 +15,7 @@ const targetBotName = "target_bot_" + Math.floor(Math.random() * 100000);
 upsilon.bootstrapBot(targetBotName, "VerySecurePassword123!");
 upsilon.call("auth_logout", {});
 
-// @spec-link [[mech_script_admin_section]]
+// @spec-link [[mechanic_script_admin_section]]
 upsilon.adminSection((admin) => {
     admin.log("✅ Admin access granted! Fetching user registry...");
 

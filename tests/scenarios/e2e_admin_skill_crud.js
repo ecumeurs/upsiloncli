@@ -15,7 +15,7 @@
 upsilon.log("Starting: Admin Skill Template CRUD");
 
 // 1. Admin login and lifecycle
-// @spec-link [[mech_script_admin_section]]
+// @spec-link [[mechanic_script_admin_section]]
 upsilon.adminSection((admin) => {
     admin.log("Admin authenticated via section.");
 

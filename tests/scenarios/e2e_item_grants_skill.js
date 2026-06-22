@@ -14,7 +14,7 @@
 upsilon.log("Starting: D11 — Item Grants Skill at Arena Init");
 
 // 1. Admin creates skill template and exotic shop item
-// @spec-link [[mech_script_admin_section]]
+// @spec-link [[mechanic_script_admin_section]]
 let shopItemId, templateId;
 
 upsilon.adminSection((admin) => {

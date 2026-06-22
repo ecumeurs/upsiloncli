@@ -6,7 +6,7 @@
 
 upsilon.log("Starting EC: Admin Skill Template Not Found");
 
-// @spec-link [[mech_script_admin_section]]
+// @spec-link [[mechanic_script_admin_section]]
 upsilon.adminSection((admin) => {
     const fakeId = "00000000-0000-0000-0000-000000000001";
 

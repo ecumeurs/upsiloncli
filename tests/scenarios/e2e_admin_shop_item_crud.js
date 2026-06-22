@@ -15,7 +15,7 @@
 upsilon.log("Starting: Admin Shop Item CRUD");
 
 // 1. Admin setup and item creation
-// @spec-link [[mech_script_admin_section]]
+// @spec-link [[mechanic_script_admin_section]]
 let createdItemId;
 upsilon.adminSection((admin) => {
     admin.log("1. Creating shop item...");

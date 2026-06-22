@@ -1,5 +1,5 @@
 ---
-id: mechanic_mech_script_admin_section
+id: mechanic_script_admin_section
 status: STABLE
 layer: IMPLEMENTATION
 priority: 2
@@ -11,7 +11,7 @@ human_name: "Administrative Protected Section"
 type: MECHANIC
 ---
 
-# New Atom
+# Administrative Protected Section
 
 ## INTENT
 To provide a secure and automated way to perform administrative tasks within scripts without session leakage.
@@ -30,7 +30,7 @@ To provide a secure and automated way to perform administrative tasks within scr
    d. Synchronize WebSockets back to the original token.
 
 ## TECHNICAL INTERFACE
-- **Code Tag:** `@spec-link [[mech_script_admin_section]]`
+- **Code Tag:** `@spec-link [[mechanic_script_admin_section]]`
 - **JS Function:** `upsilon.adminSection((admin) => { ... })`
 - **Scoped Object:** The callback receives an `admin` proxy object with `call`, `log`, and `assert` methods.
 - **Security:** `admin_*` routes are rejected if called via the global `upsilon` object outside this section.

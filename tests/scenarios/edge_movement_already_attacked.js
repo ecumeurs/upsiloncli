@@ -1,5 +1,5 @@
 // upsiloncli/tests/scenarios/edge_movement_already_attacked.js
-// @test-link [[mech_move_validation_move_validation_already_moved]]
+// @test-link [[mech_move_validation_already_moved]]
 // @test-link [[mech_action_economy]]
 // @test-link [[mech_action_economy_action_cost_rules]]
 //

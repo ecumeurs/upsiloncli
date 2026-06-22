@@ -315,7 +315,7 @@ func (c *CLI) handleStatus() {
 	fmt.Println()
 }
 
-// @spec-link [[mechanic_mech_cli_sensitive_data_masking]]
+// @spec-link [[mechanic_cli_sensitive_data_masking]]
 // prompt asks the user for a value, showing the default if available.
 func (c *CLI) prompt(name, hint, defaultVal string, required, secret bool) string {
 	for {

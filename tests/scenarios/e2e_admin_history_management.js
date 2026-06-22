@@ -11,7 +11,7 @@
 
 upsilon.log("Starting E2E Admin History Management Verification");
 
-// @spec-link [[mech_script_admin_section]]
+// @spec-link [[mechanic_script_admin_section]]
 upsilon.adminSection((admin) => {
     // 1. Fetch History
     admin.log("1. Fetching Match History Archive...");

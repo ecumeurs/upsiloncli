@@ -1,5 +1,5 @@
 // upsiloncli/tests/scenarios/edge_movement_path_too_long.js
-// @test-link [[mech_move_validation_move_validation_path_length_credits]]
+// @test-link [[mech_move_validation_path_length_credits]]
 // @test-link [[mech_action_economy]]
 // @test-link [[entity_character]]
 

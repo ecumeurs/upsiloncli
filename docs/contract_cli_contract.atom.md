@@ -12,7 +12,7 @@ dependents: []
 human_name: UpsilonCLI Contract
 ---
 
-# New Atom
+# UpsilonCLI Contract
 
 ## INTENT
 Establish the technical standards for CLI scripts and E2E testing scenarios.
@@ -25,7 +25,7 @@ Establish the technical standards for CLI scripts and E2E testing scenarios.
 - **Traceability:** Map each test scenario to its corresponding BUSINESS or ARCHITECTURE atom via `@test-link`.
 
 ## TECHNICAL INTERFACE
-- **Code Tag:** `@spec-link [[cli_contract]]`
-- **Related Atoms:** `[[shared:upsilon_contract]]`
+- **Code Tag:** `@spec-link [[contract_cli_contract]]`
+- **Related Atoms:** `[[shared:contract_upsilon_contract]]`
 
 ## EXPECTATION

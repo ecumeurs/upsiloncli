@@ -12,7 +12,7 @@
 
 upsilon.log("Starting E2E Admin Full Lifecycle Verification");
 
-// @spec-link [[mech_script_admin_section]]
+// @spec-link [[mechanic_script_admin_section]]
 upsilon.adminSection((admin) => {
     // 2. Dashbord Access
     admin.log("2. Testing Dashboard Navigation...");

@@ -1,5 +1,5 @@
 // upsiloncli/tests/scenarios/edge_api_5xx_error_handling.js
-// @test-link [[mechanic_mech_frontend_auth_bridge]]
+// @test-link [[mechanic_frontend_auth_bridge]]
 // @test-link [[api_standard_envelope]]
 
 const agentIndex = upsilon.getAgentIndex();

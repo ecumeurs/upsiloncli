@@ -15,7 +15,7 @@ let swordAttacked = false;
 let maxSwordDamage = 0;
 
 // 1. Admin Setup - Create Skill and Items
-// @spec-link [[mech_script_admin_section]]
+// @spec-link [[mechanic_script_admin_section]]
 let swordItemId, amuletItemId;
 
 upsilon.adminSection(() => {

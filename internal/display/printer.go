@@ -462,7 +462,7 @@ func (p *Printer) Draw() {
 	fmt.Fprintln(p.Output)
 }
 
-// @spec-link [[mechanic_mech_cli_sensitive_data_masking]]
+// @spec-link [[mechanic_cli_sensitive_data_masking]]
 // maskSensitive hides password-like fields in JSON bodies.
 func (p *Printer) maskSensitive(body []byte) string {
 	var data map[string]interface{}

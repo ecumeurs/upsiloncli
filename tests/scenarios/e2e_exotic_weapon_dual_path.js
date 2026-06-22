@@ -1,7 +1,7 @@
 // upsiloncli/tests/scenarios/e2e_exotic_weapon_dual_path.js
 // @test-link [[api_shop_item_admin_crud]]
 // @test-link [[api_skill_template_admin_crud]]
-// @test-link [[mech_item_buff_application]]
+// @test-link [[mechanic_item_buff_application]]
 // @test-link [[api_matchmaking]]
 //
 // D11 Dual-path: Validates that an exotic weapon delivers BOTH:
@@ -18,7 +18,7 @@
 upsilon.log("Starting: D11 Dual-Path — Exotic Weapon (Buff + Skill)");
 
 // 1. Admin setup
-// @spec-link [[mech_script_admin_section]]
+// @spec-link [[mechanic_script_admin_section]]
 let weaponItemId, templateId;
 
 upsilon.adminSection((admin) => {

@@ -1,7 +1,7 @@
 // upsiloncli/tests/scenarios/e2e_archetype_pve_full_fight.js
 // @test-link [[mec_ai_archetype_system]]
-// @test-link [[mechanic_mech_behavior_layered]]
-// @test-link [[mechanic_mech_decision_memory]]
+// @test-link [[mechanic_behavior_layered]]
+// @test-link [[mechanic_decision_memory]]
 //
 // Runs a full auto-battle PVE match to completion. Verifies that:
 // - The archetype behavior pipeline fires every AI turn without crashing.

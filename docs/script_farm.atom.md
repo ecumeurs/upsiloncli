@@ -8,9 +8,11 @@ status: STABLE
 priority: 1
 tags: [scripting, farm, qa]
 parents:
-  - [[req_tech_debt_backlog]]
+  - [[shared:req_tech_debt_backlog]]
 dependents:
-  - [[mechanic_mech_script_admin_section]]
+  - [[upsilonbattle:mechanic_script_lifecycle]]
+  - [[upsilonbattle:mechanic_shared_memory]]
+  - [[mechanic_script_admin_section]]
 ---
 
 # Multi-Agent Scripting Farm

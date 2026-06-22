@@ -1,5 +1,5 @@
 // upsiloncli/tests/scenarios/edge_movement_path_not_adjacent.js
-// @test-link [[mech_move_validation_move_validation_path_adjacency]]
+// @test-link [[mech_move_validation_path_adjacency]]
 // @test-link [[entity_grid]]
 
 const agentIndex = upsilon.getAgentIndex();

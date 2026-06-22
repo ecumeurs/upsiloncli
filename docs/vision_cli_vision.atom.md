@@ -12,7 +12,7 @@ version: 1.0
 priority: 1
 ---
 
-# New Atom
+# UpsilonCLI Vision
 
 ## INTENT
 Define the vision for the UpsilonCLI as the primary developer and automation interface for the ecosystem.
@@ -24,7 +24,7 @@ Define the vision for the UpsilonCLI as the primary developer and automation int
 - **Portability:** Ensure the CLI is easily deployable in CI environments and developer workstations.
 
 ## TECHNICAL INTERFACE
-- **Code Tag:** `@spec-link [[cli_vision]]`
-- **Related Atoms:** `[[script_farm]]`, `[[shared:upsilon_vision]]`
+- **Code Tag:** `@spec-link [[vision_cli_vision]]`
+- **Related Atoms:** `[[script_farm]]`, `[[shared:vision_upsilon_vision]]`
 
 ## EXPECTATION

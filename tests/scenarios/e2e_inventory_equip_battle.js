@@ -1,6 +1,6 @@
 // upsiloncli/tests/scenarios/e2e_inventory_equip_battle.js
 // @test-link [[api_character_equip]]
-// @test-link [[mech_item_buff_application]]
+// @test-link [[mechanic_item_buff_application]]
 // @test-link [[entity_character_equipment]]
 //
 // Validates end-to-end item utility:
