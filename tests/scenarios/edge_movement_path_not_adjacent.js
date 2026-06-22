@@ -21,20 +21,31 @@ if (!board) {
 
 const myChar = upsilon.currentCharacter();
 const startPos = myChar.position;
-upsilon.log(`[Bot-${agentIndex}] Character at: ${startPos.x},${startPos.y}`);
+const gridWidth = board.grid.width;
+const gridHeight = board.grid.height;
+upsilon.log(`[Bot-${agentIndex}] Character at: ${startPos.x},${startPos.y}, Grid: ${gridWidth}x${gridHeight}`);
 
-// 3. Attempt to move with non-adjacent path (jump)
-const nonAdjacentPath = [
-    { x: startPos.x + 2, y: startPos.y }  // Skips adjacent tile
+// 3. Attempt to move with a non-adjacent path (skip one tile).
+// Spawn position is randomly seeded, so a fixed offset can land outside the
+// grid and trip entity.path.notfound instead of the entity.path.notadjacent
+// we're after here. Try every axis/direction and use the first jump that
+// actually stays in bounds.
+const candidates = [
+    { x: startPos.x + 2, y: startPos.y },
+    { x: startPos.x - 2, y: startPos.y },
+    { x: startPos.x, y: startPos.y + 2 },
+    { x: startPos.x, y: startPos.y - 2 },
 ];
+const nonAdjacentPath = candidates.find(p => p.x >= 0 && p.x < gridWidth && p.y >= 0 && p.y < gridHeight);
+upsilon.assert(!!nonAdjacentPath, "ERROR: No in-bounds non-adjacent jump available from this spawn position");
 
-upsilon.log(`[Bot-${agentIndex}] Attempting non-adjacent move (jump)...`);
+upsilon.log(`[Bot-${agentIndex}] Attempting non-adjacent move to (${nonAdjacentPath.x},${nonAdjacentPath.y}) (jump)...`);
 try {
     upsilon.call("game_action", {
         id: matchData.match_id,
         type: "move",
         entity_id: myChar.id,
-        target_coords: nonAdjacentPath
+        target_coords: [nonAdjacentPath]
     });
     upsilon.assert(false, "ERROR: Non-adjacent path was accepted!");
 } catch (e) {
@@ -49,9 +60,12 @@ upsilon.assertEquals(updatedChar.position.x, startPos.x, "Character X position c
 upsilon.assertEquals(updatedChar.position.y, startPos.y, "Character Y position changed after failed move");
 upsilon.log(`[Bot-${agentIndex}] ✅ Position unchanged (${updatedChar.position.x},${updatedChar.position.y})`);
 
-// 4. Attempt valid adjacent move
+// 4. Attempt a valid adjacent move, one step in the same direction we just jumped.
 const validPath = [
-    { x: startPos.x + 1, y: startPos.y }
+    {
+        x: startPos.x + Math.sign(nonAdjacentPath.x - startPos.x),
+        y: startPos.y + Math.sign(nonAdjacentPath.y - startPos.y),
+    }
 ];
 upsilon.log(`[Bot-${agentIndex}] Attempting valid adjacent move...`);
 try {

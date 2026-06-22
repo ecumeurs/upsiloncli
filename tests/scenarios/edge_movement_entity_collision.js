@@ -13,11 +13,6 @@ upsilon.bootstrapBot(accountName, password);
 const matchData = upsilon.joinWaitMatch("1v1_PVE");
 const matchId = matchData.match_id;
 
-const myChars = upsilon.myCharacters();
-const char1Id = myChars[0].id;
-const char2Id = myChars[1].id;
-const char3Id = myChars[2].id;
-
 let rejected = false;
 let rounds = 0;
 const MAX_ROUNDS = 100;
@@ -30,28 +25,33 @@ while (!rejected && rounds < MAX_ROUNDS) {
     const me = upsilon.currentCharacter();
     if (!me || !me.is_self) continue;
 
-    // Find a target to move toward
-    let targetId;
-    if (me.id === char1Id) targetId = char2Id;
-    else if (me.id === char2Id) targetId = char1Id;
-    else targetId = char2Id;
+    // Regroup toward whichever living entity is closest, ally or enemy. Any
+    // of our three characters bumping into any other entity is enough to
+    // trigger the collision check, and targeting the nearest one (rather
+    // than a fixed teammate) keeps this working even if the PVE match wipes
+    // part of our team before they manage to group up.
+    const others = board.players
+        .flatMap(p => p.entities)
+        .filter(e => e.id !== me.id && !e.dead);
 
-    const target = upsilon.myCharacters().find(c => c.id === targetId && !c.dead);
-    if (!target) {
+    if (others.length === 0) {
         upsilon.call("game_action", { id: matchId, type: "pass", entity_id: me.id });
         continue;
     }
 
-    const dist = Math.abs(me.position.x - target.position.x) + Math.abs(me.position.y - target.position.y);
-    
-    if (dist <= 1) {
-        upsilon.log(`[Bot-${agentIndex}] Attempting to move ${me.name} onto ${target.name} at (${target.position.x}, ${target.position.y})`);
+    const target = others.reduce((closest, e) => {
+        const d = Math.abs(me.position.x - e.position.x) + Math.abs(me.position.y - e.position.y);
+        return (!closest || d < closest.dist) ? { entity: e, dist: d } : closest;
+    }, null);
+
+    if (target.dist <= 1) {
+        upsilon.log(`[Bot-${agentIndex}] Attempting to move ${me.name} onto ${target.entity.name} at (${target.entity.position.x}, ${target.entity.position.y})`);
         try {
             upsilon.call("game_action", {
                 id: matchId,
                 type: "move",
                 entity_id: me.id,
-                target_coords: [target.position]
+                target_coords: [target.entity.position]
             });
             upsilon.assert(false, "ERROR: Move onto occupied tile accepted");
         } catch (e) {
@@ -61,7 +61,7 @@ while (!rejected && rounds < MAX_ROUNDS) {
             continue;
         }
     } else {
-        const path = upsilon.planTravelToward(me.id, target.position, board);
+        const path = upsilon.planTravelToward(me.id, target.entity.position, board);
         if (path && path.length > 0) {
             upsilon.call("game_action", {
                 id: matchId,
