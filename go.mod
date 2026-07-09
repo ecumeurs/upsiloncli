@@ -6,7 +6,6 @@ require (
 	github.com/chzyer/readline v1.5.1
 	github.com/dop251/goja v0.0.0-20260311135729-065cd970411c
 	github.com/google/uuid v1.6.0
-	github.com/gorilla/websocket v1.5.3
 	github.com/joho/godotenv v1.5.1
 )
 

@@ -342,19 +342,17 @@ func (a *Agent) jsBootstrapBot(call goja.FunctionCall) goja.Value {
 }
 
 func (a *Agent) jsJoinWaitMatch(gameMode string) interface{} {
-	// 1. Ensure private user channel is subscribed before joining matchmaking
-	// This prevents the match.found event from being sent to a channel we aren't subbed to yet.
-	key := a.Session.WSChannelKey()
-	if key != "" {
-		channel := fmt.Sprintf("private-user.%s", key)
-		a.jsLog(fmt.Sprintf("Ensuring subscription to %s...", channel))
-		start := time.Now()
-		for !a.Listener.IsSubscribed(channel) {
-			if time.Since(start) > 30*time.Second {
-				a.throwStructuredError("Timed out waiting for private channel subscription")
-			}
-			a.jsSleep(100)
+	// 1. Ensure the realtime stream is live before joining matchmaking — the
+	// authenticated SSE connection is the private user channel, so a live
+	// stream is the guarantee match.found cannot be missed.
+	a.jsLog("Ensuring realtime stream is live...")
+	a.Listener.Sync()
+	start := time.Now()
+	for !a.Listener.IsConnected() {
+		if time.Since(start) > 30*time.Second {
+			a.throwStructuredError("Timed out waiting for realtime stream connection")
 		}
+		a.jsSleep(100)
 	}
 
 	a.jsLog("Joining queue: " + gameMode)

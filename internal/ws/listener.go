@@ -1,13 +1,19 @@
-// @spec-link [[api_websocket_game_events]]
+// Package ws maintains the CLI's realtime link. It historically spoke the
+// Pusher/Reverb websocket protocol; since the hub migration it consumes the
+// hub's Server-Sent Events stream (GET /api/v1/events), which carries the
+// same envelope-wrapped events (match.found, board.updated, turn.started,
+// game.started, game.ended, ...). The stream is bearer-authenticated, so the
+// connection itself is the user's private channel: there are no channel
+// subscriptions and no broadcasting/auth handshake anymore.
 package ws
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 	"strings"
 	"sync"
 	"time"
@@ -16,67 +22,66 @@ import (
 	"github.com/ecumeurs/upsiloncli/internal/display"
 	"github.com/ecumeurs/upsiloncli/internal/dto"
 	"github.com/ecumeurs/upsiloncli/internal/session"
-	"github.com/gorilla/websocket"
 )
 
-// Listener manages the real-time WebSocket connection to Laravel Reverb.
-type Listener struct {
-	Client   *api.Client
-	Session  *session.Session
-	Printer  *display.Printer
-	Conn     *websocket.Conn
-	SocketID string
-	AppKey   string
-	Host     string
+// streamPath is the hub's SSE endpoint.
+const streamPath = "/api/v1/events"
 
-	mu   sync.Mutex
-	subs map[string]bool
+// reconnectBase/reconnectCap bound the retry backoff between stream attempts.
+const (
+	reconnectBase = time.Second
+	reconnectCap  = 10 * time.Second
+)
+
+// Listener manages the real-time SSE connection to the hub.
+type Listener struct {
+	Client  *api.Client
+	Session *session.Session
+	Printer *display.Printer
+
+	// stream is a dedicated HTTP client: the shared api.Client carries a 30s
+	// timeout that would sever a long-lived event stream.
+	stream *http.Client
+
+	mu          sync.Mutex
+	cancel      context.CancelFunc
+	connected   bool
+	identity    string // session identity the running stream serves
+	lastEventID string // replay cursor echoed as Last-Event-ID on reconnect
 
 	waitMu  sync.Mutex
 	waiters map[string][]chan interface{}
 	buffer  map[string][]interface{}
-	subsAck map[string]bool
 	hooks   []func(string, interface{})
 	hooksMu sync.Mutex
 }
 
-// NewListener creates a new WebSocket listener.
+// NewListener creates a new SSE listener.
 func NewListener(client *api.Client, sess *session.Session, printer *display.Printer) *Listener {
-	host := os.Getenv("REVERB_HOST")
-	port := os.Getenv("REVERB_PORT")
-	if host == "" {
-		host = "127.0.0.1"
-	}
-	if port == "" {
-		port = "8080" // default
-	}
-
-	l := &Listener{
+	return &Listener{
 		Client:  client,
 		Session: sess,
 		Printer: printer,
-		AppKey:  os.Getenv("REVERB_APP_KEY"),
-		Host:    fmt.Sprintf("%s:%s", host, port),
-		subs:    make(map[string]bool),
+		stream:  &http.Client{},
 		waiters: make(map[string][]chan interface{}),
 		buffer:  make(map[string][]interface{}),
-		subsAck: make(map[string]bool),
 	}
-	return l
 }
-// Connect starts the WebSocket connection.
+
+// Connect starts the stream if the session allows it.
 func (l *Listener) Connect() {
 	l.Start()
 }
 
-// Disconnect stops the WebSocket connection.
+// Disconnect stops the stream.
 func (l *Listener) Disconnect() {
 	l.Stop()
 }
 
-// Subscribe ensures we are subscribed to a channel.
+// Subscribe is kept for the script bridge: the SSE stream has no channels
+// (being connected is the subscription), so this only ensures the stream is up.
 func (l *Listener) Subscribe(channel string) {
-	l.ensureSubscription(channel)
+	l.Sync()
 }
 
 // AddHook registers a callback for every received event.
@@ -86,193 +91,329 @@ func (l *Listener) AddHook(h func(string, interface{})) {
 	l.hooks = append(l.hooks, h)
 }
 
-// Start opens the connection and starts the message loop.
+// Start reconciles the stream with the session — before authentication there
+// is nothing to connect (the endpoint requires a bearer token).
 func (l *Listener) Start() {
-	u := fmt.Sprintf("ws://%s/app/%s?protocol=7&client=js&version=8.4.0-rc2&flash=false", l.Host, l.AppKey)
-	if l.Printer != nil {
-		l.Printer.Wscat(u)
-	}
-
-	conn, _, err := websocket.DefaultDialer.Dial(u, nil)
-	if err != nil {
-		if l.Printer != nil {
-			l.Printer.Warn(fmt.Sprintf("WebSocket connection failed (is Reverb running?): %v", err))
-		}
-		return
-	}
-	l.Conn = conn
-	if l.Printer != nil {
-		l.Printer.System("WebSocket link established. Waiting for handshake...")
-	}
-
-	go l.listenLoop()
+	l.Sync()
 }
 
-// Stop closes the WebSocket connection.
+// Stop terminates the stream.
 func (l *Listener) Stop() {
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	if l.Conn != nil {
-		l.Conn.Close()
-		l.Conn = nil
+	l.stopLocked()
+}
+
+// stopLocked cancels the running stream loop. Caller holds l.mu.
+func (l *Listener) stopLocked() {
+	if l.cancel != nil {
+		l.cancel()
+		l.cancel = nil
+	}
+	l.connected = false
+	l.identity = ""
+}
+
+// streamIdentity is what a running stream is keyed on: the user id when known,
+// else the raw token. Token renewal keeps the identity stable — the stream
+// survives it — while switching accounts (adminSection) changes it and forces
+// a reconnect as the new user.
+func (l *Listener) streamIdentity() string {
+	if uid, ok := l.Session.Get("user_id"); ok && uid != "" {
+		return uid
+	}
+	return l.Session.Token()
+}
+
+// Sync reconciles the stream with the current session state: connected while
+// a token is held, torn down on logout, reconnected when the authenticated
+// user changes. Replaces the old channel-subscription reconciliation.
+func (l *Listener) Sync() {
+	if l.Session.Token() == "" {
+		l.Stop()
+		return
+	}
+	want := l.streamIdentity()
+
+	l.mu.Lock()
+	if l.cancel != nil && l.identity == want {
+		l.mu.Unlock()
+		return
+	}
+	l.stopLocked()
+	ctx, cancel := context.WithCancel(context.Background())
+	l.cancel = cancel
+	l.identity = want
+	l.mu.Unlock()
+
+	go l.run(ctx)
+}
+
+// Status returns the current health of the listener. The second value is the
+// replay cursor (last SSE event id) — the closest analogue to the old socket
+// id — and there are no channel subscriptions anymore.
+func (l *Listener) Status() (connected bool, lastEventID string, subscriptions []string) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.connected, l.lastEventID, nil
+}
+
+// IsConnected reports whether the event stream is live.
+func (l *Listener) IsConnected() bool {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return l.connected
+}
+
+// IsSubscribed is kept for the script bridge: the authenticated stream is the
+// subscription, so any channel is "subscribed" exactly when the stream is live.
+func (l *Listener) IsSubscribed(channel string) bool {
+	return l.IsConnected()
+}
+
+// run is the stream loop: connect, relay frames until the stream drops, then
+// retry with backoff (resetting it after any healthy connection) until the
+// listener is stopped or resynced.
+func (l *Listener) run(ctx context.Context) {
+	backoff := reconnectBase
+	for ctx.Err() == nil {
+		healthy := l.streamOnce(ctx)
+		l.setConnected(ctx, false)
+		if ctx.Err() != nil {
+			return
+		}
+		if healthy {
+			backoff = reconnectBase
+		}
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(backoff):
+		}
+		if backoff < reconnectCap {
+			backoff *= 2
+		}
 	}
 }
 
-// listenLoop is the primary message reading loop that processes incoming WebSocket
-// events and dispatches them to specialized handlers or waiters.
-func (l *Listener) listenLoop() {
-
-	l.mu.Lock()
-	conn := l.Conn
-	l.mu.Unlock()
-	
-	if conn == nil {
-		return
+// streamOnce opens one SSE connection and relays its frames until it ends.
+// Output: whether a stream was established (drives the retry backoff).
+//
+// @spec-link [[api_websocket_game_events]]
+func (l *Listener) streamOnce(ctx context.Context) bool {
+	token := l.Session.Token()
+	if token == "" {
+		return false
 	}
 
-	defer conn.Close()
+	url := l.Client.BaseURL + streamPath
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		if l.Printer != nil {
+			l.Printer.Warn(fmt.Sprintf("SSE request build failed: %v", err))
+		}
+		return false
+	}
+	req.Header.Set("Accept", "text/event-stream")
+	req.Header.Set("Authorization", "Bearer "+token)
+	l.mu.Lock()
+	if l.lastEventID != "" {
+		req.Header.Set("Last-Event-ID", l.lastEventID)
+	}
+	l.mu.Unlock()
 
+	if l.Printer != nil {
+		l.Printer.Curl("GET", url, req.Header, nil)
+	}
+
+	resp, err := l.stream.Do(req)
+	if err != nil {
+		if ctx.Err() == nil && l.Printer != nil {
+			l.Printer.Warn(fmt.Sprintf("SSE connection failed (is the hub running?): %v", err))
+		}
+		return false
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 512))
+		if l.Printer != nil {
+			l.Printer.Warn(fmt.Sprintf("SSE connect rejected (Status %d): %s", resp.StatusCode, string(body)))
+		}
+		return false
+	}
+
+	l.setConnected(ctx, true)
+	if l.Printer != nil {
+		l.Printer.System("Realtime link established (SSE stream live).")
+	}
+	l.readFrames(resp.Body)
+	return true
+}
+
+// setConnected records stream liveness unless the loop was cancelled (a stale
+// goroutine must not resurrect state a newer Sync owns).
+func (l *Listener) setConnected(ctx context.Context, v bool) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if ctx.Err() != nil {
+		return
+	}
+	l.connected = v
+}
+
+// readFrames parses text/event-stream framing off the response body and
+// dispatches each complete frame; comment lines (": connected", ": hb") are
+// liveness only. Returns when the stream ends.
+func (l *Listener) readFrames(body io.Reader) {
+	r := bufio.NewReader(body)
+	var event, id string
+	var data []string
 	for {
-		_, message, err := conn.ReadMessage()
+		line, err := r.ReadString('\n')
+		if len(line) > 0 {
+			line = strings.TrimRight(line, "\r\n")
+			switch {
+			case line == "":
+				if len(data) > 0 {
+					l.handleFrame(event, id, strings.Join(data, "\n"))
+				}
+				event, id, data = "", "", nil
+			case strings.HasPrefix(line, ":"):
+				// heartbeat / opening comment
+			default:
+				field, value, _ := strings.Cut(line, ":")
+				value = strings.TrimPrefix(value, " ")
+				switch field {
+				case "event":
+					event = value
+				case "data":
+					data = append(data, value)
+				case "id":
+					id = value
+				}
+			}
+		}
 		if err != nil {
 			return
 		}
+	}
+}
 
-		var envelope struct {
-			Event   string          `json:"event"`
-			Channel string          `json:"channel"`
-			Data    json.RawMessage `json:"data"`
+// handleFrame advances the replay cursor and dispatches one complete frame.
+func (l *Listener) handleFrame(eventName, id, data string) {
+	if id != "" {
+		l.mu.Lock()
+		l.lastEventID = id
+		l.mu.Unlock()
+	}
+	if eventName == "" {
+		eventName = "message"
+	}
+	l.dispatch(eventName, json.RawMessage(data))
+}
+
+// dispatch routes one event to its specialized handler and then to waiters
+// and hooks — the SSE port of the old websocket message loop.
+//
+// @spec-link [[api_websocket_game_events]]
+func (l *Listener) dispatch(eventName string, raw json.RawMessage) {
+	switch eventName {
+	case "match.found":
+		if l.handleMatchFound(eventName, raw) {
+			return // waiters are notified after session hydration
 		}
-
-		if err := json.Unmarshal(message, &envelope); err != nil {
-			continue
+	case "board.updated", "turn.started", "game.started":
+		l.handleBoardEvent(eventName, raw)
+	default:
+		// Print all other events for transparency
+		if l.Printer != nil {
+			l.Printer.WebSocket(eventName, raw)
 		}
+	}
+	l.notifyWaiters(eventName, raw)
+}
 
-		switch envelope.Event {
-		case "pusher:connection_established":
-			var data struct {
-				SocketID string `json:"socket_id"`
-			}
-			// Pusher data is sometimes double-encoded as a JSON string
-			var dataStr string
-			if err := json.Unmarshal(envelope.Data, &dataStr); err == nil {
-				json.Unmarshal([]byte(dataStr), &data)
-			} else {
-				json.Unmarshal(envelope.Data, &data)
-			}
-			
-			l.SocketID = data.SocketID
-			if l.Printer != nil {
-				l.Printer.System(fmt.Sprintf("Handshake successful. SocketID: %s", l.SocketID))
-			}
-			l.subscribeToUserChannel()
-			l.Sync()
-
-		case "match.found":
-			// Laravel payload: [[api_standard_envelope]] -> { data: { match_id: "..." } }
-			data, err := l.unwrapEnvelope(envelope.Data)
-			if err != nil {
-				if l.Printer != nil {
-					l.Printer.Warn(fmt.Sprintf("match.found envelope error: %v", err))
-				}
-				continue
-			}
-
-			var payload struct {
-				MatchID string `json:"match_id"`
-			}
-			dataBytes, _ := json.Marshal(data)
-			if err := json.Unmarshal(dataBytes, &payload); err == nil && payload.MatchID != "" {
-				l.Session.Set("match_id", payload.MatchID)
-				if l.Printer != nil {
-					l.Printer.WebSocket("MatchFound", envelope.Data)
-					l.Printer.System(fmt.Sprintf("Match detected! Initializing arena %s...", payload.MatchID))
-				}
-				
-				// Perform tactical setup in background to avoid blocking the main WebSocket loop
-				// but keep a local copy of event data to notify waiters AFTER setup
-				eventCopy := envelope // shallow copy is fine as we only need Event and Data
-				go func(mID string, env struct {
-					Event   string          `json:"event"`
-					Channel string          `json:"channel"`
-					Data    json.RawMessage `json:"data"`
-				}) {
-					l.initializeMatch(mID)
-					l.subscribeToArenaChannel(mID)
-					// Now that the session is hydrated with participants, notify the bot
-					l.notifyWaiters(env.Event, env.Data)
-				}(payload.MatchID, eventCopy)
-				
-				continue // Skip the global notifyWaiters at the end for this specific event
-			} else {
-				if l.Printer != nil {
-					l.Printer.Warn(fmt.Sprintf("Received match.found but match_id is missing or malformed. Raw: %s", string(envelope.Data)))
-				}
-			}
-
-		case "board.updated", "turn.started", "game.started":
-			// Laravel payload: [[api_standard_envelope]] -> { data: { ...BoardState... } }
-			if l.Printer != nil {
-				l.Printer.WebSocket(envelope.Event, envelope.Data)
-			}
-
-			data, err := l.unwrapEnvelope(envelope.Data)
-			if err != nil {
-				if l.Printer != nil {
-					l.Printer.Warn(fmt.Sprintf("board.updated envelope error: %v", err))
-				}
-				continue
-			}
-
-			var payload dto.BoardState
-			dataBytes, _ := json.Marshal(data)
-			if err := json.Unmarshal(dataBytes, &payload); err == nil {
-				l.decorateBoard(&payload)
-				l.Session.SetParticipants(payload.Players)
-				l.Session.SetLastBoard(&payload)
-				if l.Printer != nil {
-					l.Printer.System("Tactical feed updated.")
-					if payload.GameFinished {
-						if payload.WinnerIsSelf {
-							name, _ := l.Session.Get("account_name")
-							l.Printer.Victory(name)
-						} else if payload.WinnerTeamID != nil {
-							l.Printer.Defeat(fmt.Sprintf("Team %d", *payload.WinnerTeamID))
-						} else {
-							l.Printer.Draw()
-						}
-					} else {
-						l.Printer.Board(&payload, l.Session.UserIdentifier(), l.Session.Participants())
-						l.Printer.Suggestions([]string{"redraw"})
-					}
-				}
-			} else {
-				if l.Printer != nil {
-					l.Printer.Warn(fmt.Sprintf("Failed to decode board.updated payload: %v", err))
-				}
-			}
-
-		case "pusher_internal:subscription_succeeded":
-			l.waitMu.Lock()
-			l.subsAck[envelope.Channel] = true
-			l.waitMu.Unlock()
-			if l.Printer != nil {
-				l.Printer.System(fmt.Sprintf("Subscription for %s acknowledged by server.", envelope.Channel))
-			}
-		
-		case "pusher:ping":
-			// Respond to server heartbeats to prevent timeout (Error 4201)
-			conn.WriteJSON(map[string]string{"event": "pusher:pong"})
-		
-		default:
-			// Print all other events for transparency as requested
-			if l.Printer != nil {
-				l.Printer.WebSocket(envelope.Event, envelope.Data)
-			}
+// handleMatchFound stores the match id and hydrates the tactical session in
+// the background before notifying waiters, so the bot wakes to a populated
+// arena. Output: whether the deferred notification path was taken.
+func (l *Listener) handleMatchFound(eventName string, raw json.RawMessage) bool {
+	data, err := l.unwrapEnvelope(raw)
+	if err != nil {
+		if l.Printer != nil {
+			l.Printer.Warn(fmt.Sprintf("match.found envelope error: %v", err))
 		}
+		return false
+	}
 
-		// Notify any waiters for this event
-		l.notifyWaiters(envelope.Event, envelope.Data)
+	var payload struct {
+		MatchID string `json:"match_id"`
+	}
+	dataBytes, _ := json.Marshal(data)
+	if err := json.Unmarshal(dataBytes, &payload); err != nil || payload.MatchID == "" {
+		if l.Printer != nil {
+			l.Printer.Warn(fmt.Sprintf("Received match.found but match_id is missing or malformed. Raw: %s", string(raw)))
+		}
+		return false
+	}
+
+	l.Session.Set("match_id", payload.MatchID)
+	if l.Printer != nil {
+		l.Printer.WebSocket("MatchFound", raw)
+		l.Printer.System(fmt.Sprintf("Match detected! Initializing arena %s...", payload.MatchID))
+	}
+
+	// Perform tactical setup in background to avoid blocking the stream loop;
+	// waiters are notified only once the session holds the participants.
+	go func(matchID string) {
+		l.initializeMatch(matchID)
+		l.notifyWaiters(eventName, raw)
+	}(payload.MatchID)
+	return true
+}
+
+// handleBoardEvent applies one tactical update to the session (decorated
+// board, participants) and renders it.
+func (l *Listener) handleBoardEvent(eventName string, raw json.RawMessage) {
+	if l.Printer != nil {
+		l.Printer.WebSocket(eventName, raw)
+	}
+
+	data, err := l.unwrapEnvelope(raw)
+	if err != nil {
+		if l.Printer != nil {
+			l.Printer.Warn(fmt.Sprintf("%s envelope error: %v", eventName, err))
+		}
+		return
+	}
+
+	var payload dto.BoardState
+	dataBytes, _ := json.Marshal(data)
+	if err := json.Unmarshal(dataBytes, &payload); err != nil {
+		if l.Printer != nil {
+			l.Printer.Warn(fmt.Sprintf("Failed to decode %s payload: %v", eventName, err))
+		}
+		return
+	}
+
+	l.decorateBoard(&payload)
+	l.Session.SetParticipants(payload.Players)
+	l.Session.SetLastBoard(&payload)
+	if l.Printer != nil {
+		l.Printer.System("Tactical feed updated.")
+		if payload.GameFinished {
+			if payload.WinnerIsSelf {
+				name, _ := l.Session.Get("account_name")
+				l.Printer.Victory(name)
+			} else if payload.WinnerTeamID != nil {
+				l.Printer.Defeat(fmt.Sprintf("Team %d", *payload.WinnerTeamID))
+			} else {
+				l.Printer.Draw()
+			}
+		} else {
+			l.Printer.Board(&payload, l.Session.UserIdentifier(), l.Session.Participants())
+			l.Printer.Suggestions([]string{"redraw"})
+		}
 	}
 }
 
@@ -289,7 +430,7 @@ func (l *Listener) WaitForAnyData(ctx context.Context, eventNames []string, time
 		name string
 		data interface{}
 	}, 1)
-	
+
 	l.waitMu.Lock()
 	// Check buffer first
 	for _, name := range eventNames {
@@ -306,7 +447,7 @@ func (l *Listener) WaitForAnyData(ctx context.Context, eventNames []string, time
 		w := make(chan interface{}, 1)
 		waiterChans[name] = w
 		l.waiters[name] = append(l.waiters[name], w)
-		
+
 		nameCaptured := name
 		go func(n string, w chan interface{}) {
 			select {
@@ -350,52 +491,29 @@ func (l *Listener) WaitForAnyData(ctx context.Context, eventNames []string, time
 
 // unwrapEnvelope extracts the 'data' field from a [[api_standard_envelope]].
 func (l *Listener) unwrapEnvelope(raw json.RawMessage) (interface{}, error) {
-	// 1. Handle double-encoding (Pusher/Reverb sends data as a JSON string sometimes)
-	var intermediate json.RawMessage
-	var dataStr string
-	if err := json.Unmarshal(raw, &dataStr); err == nil {
-		intermediate = json.RawMessage(dataStr)
-	} else {
-		intermediate = raw
-	}
-
-	// 2. Unmarshal into standard envelope structure
 	var envelope struct {
 		Success bool        `json:"success"`
 		Message string      `json:"message"`
 		Data    interface{} `json:"data"`
 	}
-	
-	if err := json.Unmarshal(intermediate, &envelope); err != nil {
+	if err := json.Unmarshal(raw, &envelope); err != nil {
 		return nil, fmt.Errorf("malformed envelope: %v", err)
 	}
-
 	if !envelope.Success {
 		return nil, fmt.Errorf("server error: %s", envelope.Message)
 	}
-
 	return envelope.Data, nil
 }
 
-// notifyWaiters dispatches a received event to any active blockers (WaitForData) 
+// notifyWaiters dispatches a received event to any active blockers (WaitForData)
 // and triggers registered hooks.
 func (l *Listener) notifyWaiters(eventName string, data json.RawMessage) {
-
 	l.waitMu.Lock()
 	defer l.waitMu.Unlock()
 
-	// 1. Handle double-encoding (Pusher/Reverb sends data as a JSON string sometimes)
-	var intermediate json.RawMessage
-	var dataStr string
-	if err := json.Unmarshal(data, &dataStr); err == nil {
-		intermediate = json.RawMessage(dataStr)
-	} else {
-		intermediate = data
-	}
-
 	// Parse into interface{} for JS
 	var parsed interface{}
-	if err := json.Unmarshal(intermediate, &parsed); err != nil {
+	if err := json.Unmarshal(data, &parsed); err != nil {
 		if l.Printer != nil {
 			l.Printer.Warn(fmt.Sprintf("Failed to parse event data for JS: %v", err))
 		}
@@ -426,164 +544,7 @@ func (l *Listener) notifyWaiters(eventName string, data json.RawMessage) {
 	l.hooksMu.Unlock()
 }
 
-// Sync reconciles active WebSocket subscriptions with the current session state.
-// It ensures we are subscribed to the private user channel and any active arena channel.
-func (l *Listener) Sync() {
-	l.mu.Lock()
-	conn := l.Conn
-	socketID := l.SocketID
-	l.mu.Unlock()
-
-	if conn == nil || socketID == "" {
-		return
-	}
-
-	// 1. Sync User Channel
-	key := l.Session.WSChannelKey()
-	if key != "" {
-		channel := fmt.Sprintf("private-user.%s", key)
-		l.ensureSubscription(channel)
-	}
-
-	// 2. Sync Arena Channel
-	if mid, ok := l.Session.Get("match_id"); ok && mid != "" {
-		channel := fmt.Sprintf("private-arena.%s", mid)
-		l.ensureSubscription(channel)
-	}
-}
-
-// Status returns the current health of the listener.
-func (l *Listener) Status() (connected bool, socketID string, subscriptions []string) {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-	
-	connected = l.Conn != nil
-	socketID = l.SocketID
-	subscriptions = make([]string, 0, len(l.subs))
-	for sub := range l.subs {
-		subscriptions = append(subscriptions, sub)
-	}
-	return
-}
-
-// IsSubscribed returns true if the given channel has been acknowledged by the server.
-func (l *Listener) IsSubscribed(channel string) bool {
-	l.waitMu.Lock()
-	defer l.waitMu.Unlock()
-	return l.subsAck[channel]
-}
-
-// subscribeToUserChannel handles the automatic subscription to the private user 
-// notifications channel based on the current session.
-func (l *Listener) subscribeToUserChannel() {
-
-	key := l.Session.WSChannelKey()
-	if key == "" {
-		return
-	}
-	l.ensureSubscription(fmt.Sprintf("private-user.%s", key))
-}
-
-// subscribeToArenaChannel handles the automatic subscription to match-specific 
-// tactical updates.
-func (l *Listener) subscribeToArenaChannel(matchID string) {
-
-	l.ensureSubscription(fmt.Sprintf("private-arena.%s", matchID))
-}
-
-// ensureSubscription performs the authenticated handshake for a private channel 
-// and sends the subscription request if not already subscribed.
-func (l *Listener) ensureSubscription(channel string) {
-
-	l.mu.Lock()
-	defer l.mu.Unlock()
-
-	if l.Conn == nil || l.SocketID == "" {
-		return
-	}
-
-	if l.subs[channel] {
-		return
-	}
-
-	auth, err := l.getAuth(channel)
-	if err != nil {
-		return
-	}
-
-	sub := map[string]interface{}{
-		"event": "pusher:subscribe",
-		"data": map[string]string{
-			"channel": channel,
-			"auth":    auth,
-		},
-	}
-	
-	if err := l.Conn.WriteJSON(sub); err == nil {
-		l.subs[channel] = true
-	}
-}
-
-// getAuth retrieves a WebSocket authentication signature from the Laravel 
-// backend for private channel access.
-func (l *Listener) getAuth(channel string) (string, error) {
-
-	token := l.Session.Token()
-	if token == "" {
-		return "", fmt.Errorf("not authenticated")
-	}
-
-	// broadcasting/auth (no /api prefix)
-	url := l.Client.BaseURL + "/broadcasting/auth"
-	formBody := fmt.Sprintf("socket_id=%s&channel_name=%s", l.SocketID, channel)
-	
-	// Display the manual test command as requested
-	headers := http.Header{}
-	headers.Set("Content-Type", "application/x-www-form-urlencoded")
-	headers.Set("Accept", "application/json") // Explicitly request JSON
-	headers.Set("Authorization", "Bearer "+token)
-	if l.Printer != nil {
-		l.Printer.Curl("POST", url, headers, []byte(formBody))
-	}
-
-	body := strings.NewReader(formBody)
-	req, _ := http.NewRequest("POST", url, body)
-	req.Header = headers
-
-	resp, err := l.Client.HTTPClient.Do(req)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	raw, _ := io.ReadAll(resp.Body)
-	if resp.StatusCode != http.StatusOK {
-		if l.Printer != nil {
-			l.Printer.Warn(fmt.Sprintf("Authorization failed for %s (Status %d)", channel, resp.StatusCode))
-			l.Printer.Warn(fmt.Sprintf("Raw Body: %s", string(raw)))
-		}
-		return "", fmt.Errorf("auth failed: %d", resp.StatusCode)
-	}
-
-	var result struct {
-		Auth string `json:"auth"`
-	}
-	if err := json.Unmarshal(raw, &result); err != nil {
-		if l.Printer != nil {
-			l.Printer.Warn(fmt.Sprintf("Failed to decode auth response: %v", err))
-		}
-		return "", err
-	}
-
-	// Display the manual wscat payload as requested
-	if l.Printer != nil {
-		l.Printer.WscatPayload(channel, result.Auth)
-	}
-
-	return result.Auth, nil
-}
-
-// initializeMatch hydrates the local session state with full match details 
+// initializeMatch hydrates the local session state with full match details
 // (grid, players) when a match is first discovered.
 func (l *Listener) initializeMatch(matchID string) {
 

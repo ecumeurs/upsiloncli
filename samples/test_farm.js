@@ -1,9 +1,15 @@
 upsilon.log("Bot starting...");
-var help = upsilon.call("api_help", {});
-if (help) {
-    upsilon.log("API Help retrieved successfully.");
+
+// /api/v1/help is retired; the CLI ships a static route registry instead.
+// Smoke-test the API with an authenticated read instead of discovery.
+const botId = Math.floor(Math.random() * 10000);
+upsilon.bootstrapBot("farm_sample_" + botId, "VerySecurePassword123!");
+
+var stats = upsilon.call("stats_waiting", {});
+if (stats) {
+    upsilon.log("Waiting stats retrieved successfully.");
 } else {
-    upsilon.log("Failed to retrieve API help.");
+    upsilon.log("Failed to retrieve waiting stats.");
 }
 
 upsilon.log("Waiting for a dummy event (should timeout)...");
@@ -14,3 +20,5 @@ try {
 }
 
 upsilon.log("Test finished.");
+</content>
+</invoke>

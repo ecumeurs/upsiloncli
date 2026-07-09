@@ -93,26 +93,6 @@ func (p *Printer) Curl(method, url string, headers http.Header, body []byte) {
 	fmt.Fprintln(p.Output, Dim+strings.Join(parts, " ")+Reset)
 }
 
-// Wscat prints a manual wscat connection command.
-func (p *Printer) Wscat(url string) {
-	fmt.Fprintf(p.Output, "%s%s%s[WSCAT]%s %sconnect -c \"%s\"%s\n", p.timestamp(), p.Prefix, Magenta+Bold, Reset, Dim, url, Reset)
-}
-
-// WscatPayload prints a JSON payload for manual pusher subscription via wscat.
-func (p *Printer) WscatPayload(channel, auth string) {
-	fmt.Fprintln(p.Output)
-	fmt.Fprintf(p.Output, "%s%s%s[WSCAT-SEND]%s To subscribe manually, paste this into wscat:\n", p.timestamp(), p.Prefix, Magenta+Bold, Reset)
-	msg := map[string]interface{}{
-		"event": "pusher:subscribe",
-		"data": map[string]string{
-			"channel": channel,
-			"auth":    auth,
-		},
-	}
-	raw, _ := json.Marshal(msg)
-	fmt.Fprintln(p.Output, "  "+Dim+string(raw)+Reset)
-}
-
 // Response prints the HTTP status and pretty-printed JSON body.
 func (p *Printer) Response(statusCode int, body []byte) {
 	color := Green

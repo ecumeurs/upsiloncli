@@ -276,12 +276,12 @@ func (c *CLI) handleStatus() {
 	fmt.Printf("  %sEnd-to-End Connectivity Status%s\n", display.Bold, display.Reset)
 	fmt.Printf("  %s%s%s\n", display.Dim, strings.Repeat("─", 50), display.Reset)
 
-	// 1. API Check
+	// 1. API Check — envelope-free liveness route, served by the hub (/help is retired)
 	apiStatus := display.Red + "OFFLINE" + display.Reset
-	if _, err := c.Client.Get("/api/v1/help"); err == nil {
+	if _, err := c.Client.Get("/up"); err == nil {
 		apiStatus = display.Green + "ONLINE" + display.Reset
 	}
-	fmt.Printf("  %-20s %s\n", "Laravel API:", apiStatus)
+	fmt.Printf("  %-20s %s\n", "API Gateway:", apiStatus)
 
 	// 2. Session Check
 	sessStatus := display.Red + "UNAUTHENTICATED" + display.Reset
@@ -290,27 +290,15 @@ func (c *CLI) handleStatus() {
 	}
 	fmt.Printf("  %-20s %s\n", "Session Status:", sessStatus)
 
-	// 3. WebSocket Check
-	wsConn, wsSocket, wsSubs := c.Listener.Status()
-	wsStatus := display.Red + "DISCONNECTED" + display.Reset
-	if wsConn {
-		if wsSocket != "" {
-			wsStatus = display.Green + "CONNECTED (Handshake OK)" + display.Reset
-		} else {
-			wsStatus = display.Yellow + "CONNECTED (Waiting for Handshake)" + display.Reset
-		}
+	// 3. Realtime Check (SSE stream; connection = private user channel)
+	sseConn, lastEventID, _ := c.Listener.Status()
+	sseStatus := display.Red + "DISCONNECTED" + display.Reset
+	if sseConn {
+		sseStatus = display.Green + "CONNECTED" + display.Reset
 	}
-	fmt.Printf("  %-20s %s\n", "WebSocket Link:", wsStatus)
-	if wsSocket != "" {
-		fmt.Printf("  %-20s %s%s%s\n", "Socket ID:", display.Dim, wsSocket, display.Reset)
-	}
-
-	// 4. Subscriptions
-	fmt.Printf("  %-20s ", "Subscriptions:")
-	if len(wsSubs) > 0 {
-		fmt.Println(display.Cyan + strings.Join(wsSubs, ", ") + display.Reset)
-	} else {
-		fmt.Println(display.Dim + "None" + display.Reset)
+	fmt.Printf("  %-20s %s\n", "Realtime Link (SSE):", sseStatus)
+	if lastEventID != "" {
+		fmt.Printf("  %-20s %s%s%s\n", "Last Event ID:", display.Dim, lastEventID, display.Reset)
 	}
 	fmt.Println()
 }

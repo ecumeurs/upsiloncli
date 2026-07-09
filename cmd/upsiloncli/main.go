@@ -32,14 +32,6 @@ func main() {
 	ts := time.Now().UTC().Format("2006-01-02T15:04:05.000Z07:00")
 	fmt.Printf("[{%s}] [INFO] UpsilonCLI starting (rev: %s)\n", ts, rev)
 
-	appKey := os.Getenv("REVERB_APP_KEY")
-	if appKey == "" {
-		ts := time.Now().UTC().Format("2006-01-02T15:04:05.000Z07:00")
-		fmt.Printf("[{%s}] \033[31m\033[1m[ERROR]\033[0m Mandatory environment variable REVERB_APP_KEY is missing.\n", ts)
-		fmt.Println("Please set it in your system environment or a .env file.")
-		os.Exit(1)
-	}
-
 	upsilonBaseURL := os.Getenv("UPSILON_BASE_URL")
 	if upsilonBaseURL == "" {
 		ts := time.Now().UTC().Format("2006-01-02T15:04:05.000Z07:00")
@@ -62,9 +54,6 @@ func main() {
 
 	if *local {
 		*baseURL = "http://127.0.0.1:8000"
-		os.Setenv("REVERB_HOST", "127.0.0.1")
-		os.Setenv("REVERB_PORT", "8080")
-		os.Setenv("REVERB_SCHEME", "http")
 	}
 
 	if *auto {

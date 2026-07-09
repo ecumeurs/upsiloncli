@@ -775,31 +775,6 @@ func (e *GameForfeit) Execute(client *api.Client, sess *session.Session, inputs 
 	return err
 }
 
-// --- Help ---
-
-// HelpEndpoint implements Endpoint for GET /api/v1/help.
-type HelpEndpoint struct{}
-
-func (e *HelpEndpoint) Name() string        { return "api_help" }
-func (e *HelpEndpoint) Description() string { return "Get machine-readable API documentation" }
-func (e *HelpEndpoint) Method() string      { return "GET" }
-func (e *HelpEndpoint) Path() string        { return "/api/v1/help" }
-func (e *HelpEndpoint) Auth() bool          { return false }
-func (e *HelpEndpoint) Params() []Param     { return nil }
-
-func (e *HelpEndpoint) Next() []string {
-	return nil
-}
-
-func (e *HelpEndpoint) ExecuteRaw(client *api.Client, sess *session.Session, inputs map[string]string) (*api.Response, error) {
-	return client.Get(e.Path())
-}
-
-func (e *HelpEndpoint) Execute(client *api.Client, sess *session.Session, inputs map[string]string) error {
-	_, err := e.ExecuteRaw(client, sess, inputs)
-	return err
-}
-
 // --- Helpers ---
 
 // SyncSession extracts contextual state (JWT, user_id, match_id, character_ids)
@@ -958,7 +933,4 @@ func RegisterAll(reg *Registry) {
 
 	// Leaderboard
 	reg.Register(&LeaderboardGet{})
-
-	// Help
-	reg.Register(&HelpEndpoint{})
 }

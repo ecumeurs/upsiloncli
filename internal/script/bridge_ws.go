@@ -46,13 +46,15 @@ func (a *Agent) jsWsDisconnect() {
 	a.Listener.Disconnect()
 }
 
-// jsWsStatus returns a map containing the current connectivity and subscription state.
+// jsWsStatus returns a map containing the current connectivity state. The
+// socket_id key is kept for script compatibility and now carries the SSE
+// replay cursor (last event id).
 func (a *Agent) jsWsStatus() interface{} {
 
-	conn, sid, subs := a.Listener.Status()
+	conn, lastEventID, subs := a.Listener.Status()
 	return map[string]interface{}{
 		"connected":     conn,
-		"socket_id":     sid,
+		"socket_id":     lastEventID,
 		"subscriptions": subs,
 	}
 }
