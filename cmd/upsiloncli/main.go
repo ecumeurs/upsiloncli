@@ -39,8 +39,8 @@ func main() {
 		fmt.Println("Please set it in your system environment or a .env file.")
 		os.Exit(1)
 	}
-	baseURL := flag.String("base-url", upsilonBaseURL, "Laravel API base URL")
-	local := flag.Bool("local", false, "Force local configuration (127.0.0.1:8000)")
+	baseURL := flag.String("base-url", upsilonBaseURL, "Hub API base URL")
+	local := flag.Bool("local", false, "Force local configuration (hub direct on 127.0.0.1:8090)")
 	auto := flag.Bool("auto", false, "Run full journey in autopilot mode")
 	persist := flag.Bool("persist", false, "Load/save session to .upsilon_session.json")
 	flag.BoolVar(persist, "P", false, "Load/save session to .upsilon_session.json (shorthand)")
@@ -53,7 +53,10 @@ func main() {
 	flag.Parse()
 
 	if *local {
-		*baseURL = "http://127.0.0.1:8000"
+		// Post-cutover the hub serves the API/SSE/SPA directly on :8090 (the
+		// Caddy front door on :8085 is a separate container, unreachable via
+		// 127.0.0.1 from inside the devcontainer where local runs happen).
+		*baseURL = "http://127.0.0.1:8090"
 	}
 
 	if *auto {
