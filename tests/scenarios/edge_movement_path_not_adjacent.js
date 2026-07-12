@@ -1,5 +1,5 @@
 // upsiloncli/tests/scenarios/edge_movement_path_not_adjacent.js
-// @test-link [[mech_move_validation_path_adjacency]]
+// @test-link [[mech_move_validation]]
 // @test-link [[entity_grid]]
 
 const agentIndex = upsilon.getAgentIndex();
@@ -59,25 +59,5 @@ const updatedChar = updatedBoard.game_state.players.flatMap(p => p.entities).fin
 upsilon.assertEquals(updatedChar.position.x, startPos.x, "Character X position changed after failed move");
 upsilon.assertEquals(updatedChar.position.y, startPos.y, "Character Y position changed after failed move");
 upsilon.log(`[Bot-${agentIndex}] ✅ Position unchanged (${updatedChar.position.x},${updatedChar.position.y})`);
-
-// 4. Attempt a valid adjacent move, one step in the same direction we just jumped.
-const validPath = [
-    {
-        x: startPos.x + Math.sign(nonAdjacentPath.x - startPos.x),
-        y: startPos.y + Math.sign(nonAdjacentPath.y - startPos.y),
-    }
-];
-upsilon.log(`[Bot-${agentIndex}] Attempting valid adjacent move...`);
-try {
-    upsilon.call("game_action", {
-        id: matchData.match_id,
-        type: "move",
-        entity_id: myChar.id,
-        target_coords: validPath
-    });
-    upsilon.log(`[Bot-${agentIndex}] ✅ Valid adjacent move succeeded`);
-} catch (e) {
-    upsilon.log(`[Bot-${agentIndex}] Valid move failed (may be expected): ${e.message}`);
-}
 
 upsilon.log(`[Bot-${agentIndex}] EC-05: MOVEMENT PATH NOT ADJACENT PASSED.`);

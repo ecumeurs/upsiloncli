@@ -1,6 +1,5 @@
 // upsiloncli/tests/scenarios/edge_prog_attribute_cap.js
 // @test-link [[rule_progression]]
-// @test-link [[entity_character]]
 
 const agentIndex = upsilon.getAgentIndex();
 const botId = Math.floor(Math.random() * 10000) + "_" + agentIndex;
@@ -9,7 +8,7 @@ const password = "VerySecurePassword123!";
 
 upsilon.log(`[Bot-${agentIndex}] Starting EC-28: Progression Attribute Cap Violation`);
 
-// 1. Setup (register with rigged wins for testing)
+// 1. Setup
 const regResponse = upsilon.call("auth_register", {
     account_name: accountName,
     email: accountName + "@example.com",
@@ -27,70 +26,46 @@ upsilon.assert(profile.length > 0, "No characters found");
 const char = profile[0];
 const charId = char.id;
 
-upsilon.log(`[Bot-${agentIndex}] Character: ${char.name}`);
-upsilon.log(`[Bot-${agentIndex}] Initial stats - HP: ${char.hp}, Attack: ${char.attack}, Defense: ${char.defense}, Move: ${char.move}`);
+// The cap is expressed in Character Points (CP), not raw attribute points:
+// spent_cp MUST NOT exceed 100 + (total_wins * 10) (rule_progression v2.1).
+// HP costs exactly 1 CP per point, so it is the simplest lever to land
+// exactly on (and one past) the CP boundary without needing to win a match
+// first (a fresh account already has a non-zero cap: 100 + 0 wins).
+const account = upsilon.call("profile_get", {});
+const wins = account.total_wins || 0;
+const maxAllowedCP = 100 + wins * 10;
+const spentCP = char.spent_cp || 0;
 
-const initialTotal = char.hp + char.attack + char.defense + char.move;
-upsilon.log(`[Bot-${agentIndex}] Initial total stats: ${initialTotal}`);
+upsilon.log(`[Bot-${agentIndex}] Character: ${char.name}, spent_cp: ${spentCP}, wins: ${wins}, cap: ${maxAllowedCP}`);
 
-// For this test, we'll assume the character has some wins
-// The cap formula is: 10 + total_wins
-// Let's test with a win to get 1 point
+// 2. Attempt an HP upgrade that overshoots the cap by exactly 1 CP.
+const excessHP = (maxAllowedCP - spentCP) + 1;
+const overshotSpentCP = spentCP + excessHP;
+const expectedMessage = `Upgrade failed: Total spent CP (${overshotSpentCP}) exceeds the allowed cap (${maxAllowedCP} based on ${wins} wins).`;
 
-upsilon.log(`[Bot-${agentIndex}] Joining match to get point...`);
-const matchData = upsilon.joinWaitMatch("1v1_PVE");
-
-const board = upsilon.waitNextTurn();
-if (board) {
-    // Wait for match to end
-    upsilon.sleep(10000);
-}
-
-// 2. Check profile after win
-const afterWinProfile = upsilon.call("profile_get", {});
-const wins = afterWinProfile.total_wins || 0;
-const expectedCap = 10 + wins;
-
-upsilon.log(`[Bot-${agentIndex}] Wins: ${wins}, Expected cap: ${expectedCap}`);
-
-const afterWinChar = afterWinProfile.characters.find(c => c.id === charId);
-const currentTotal = afterWinChar.hp + afterWinChar.attack + afterWinChar.defense + afterWinChar.move;
-
-upsilon.log(`[Bot-${agentIndex}] Current total stats: ${currentTotal}`);
-
-// 3. Attempt upgrade that would exceed cap
-upsilon.log(`[Bot-${agentIndex}] Attempting upgrade that would exceed cap...`);
-
-// Try to add more than the available point
-const excessUpgrade = expectedCap - currentTotal + 2;  // Would exceed cap by 2
-
+upsilon.log(`[Bot-${agentIndex}] Attempting +${excessHP} HP (would spend ${overshotSpentCP} CP, cap is ${maxAllowedCP})...`);
 try {
     upsilon.call("character_upgrade", {
         characterId: charId,
-        hp: excessUpgrade
+        hp: excessHP
     });
-    upsilon.assert(false, "ERROR: Upgrade exceeding cap was accepted!");
+    upsilon.assert(false, "ERROR: Upgrade exceeding the CP cap was accepted!");
 } catch (e) {
-    upsilon.log(`[Bot-${agentIndex}] ✅ Cap-violating upgrade properly rejected: ${e.message}`);
+    upsilon.assertResponse(e, 400, expectedMessage);
+    upsilon.log(`[Bot-${agentIndex}] ✅ Cap-violating upgrade properly rejected`);
 }
 
-// 4. Attempt valid upgrade within cap
-if (currentTotal < expectedCap) {
-    const validUpgrade = 1;
-    upsilon.log(`[Bot-${agentIndex}] Attempting valid upgrade within cap (+${validUpgrade})...`);
-
-    try {
-        const upgraded = upsilon.call("character_upgrade", {
-            characterId: charId,
-            hp: validUpgrade
-        });
-        const newTotal = upgraded.hp + upgraded.attack + upgraded.defense + upgraded.move;
-        upsilon.assert(newTotal <= expectedCap, `Upgrade exceeded cap! New total: ${newTotal}, Expected cap: ${expectedCap}`);
-        upsilon.log(`[Bot-${agentIndex}] ✅ Valid upgrade succeeded, total: ${newTotal}`);
-    } catch (e) {
-        upsilon.log(`[Bot-${agentIndex}] Valid upgrade failed: ${e.message}`);
-    }
-}
+// 3. Confirm the boundary is inclusive: an upgrade that lands exactly on the
+// cap (not past it) must succeed.
+const validHP = maxAllowedCP - spentCP;
+upsilon.log(`[Bot-${agentIndex}] Attempting +${validHP} HP (lands exactly on the ${maxAllowedCP} CP cap)...`);
+const upgraded = upsilon.call("character_upgrade", {
+    characterId: charId,
+    hp: validHP
+});
+upsilon.assertEquals(upgraded.spent_cp, maxAllowedCP, "Valid boundary upgrade did not spend exactly the cap");
+upsilon.assertEquals(upgraded.hp, char.hp + validHP, "HP did not increase by the requested amount");
+upsilon.log(`[Bot-${agentIndex}] ✅ Boundary upgrade succeeded, spent_cp: ${upgraded.spent_cp}`);
 
 // Cleanup
 upsilon.onTeardown(() => {

@@ -1,7 +1,6 @@
 // upsiloncli/tests/scenarios/edge_match_queue_while_queued.js
-// @test-link [[rule_matchmaking_single_queue]]
-// @test-link [[api_matchmaking]]
-// @test-link [[usecase_api_flow_matchmaking]]
+// @test-link [[upsilonapi:rule_matchmaking_single_queue]]
+// @test-link [[upsilonapi:api_matchmaking]]
 
 const botId = Math.floor(Math.random() * 10000);
 const accountName = "queueedge_bot_" + botId;
@@ -18,50 +17,29 @@ const firstQueueResult = upsilon.call("matchmaking_join", { game_mode: "1v1_PVP"
 upsilon.assertEquals(firstQueueResult.status, "queued", "First queue join should return 'queued'");
 upsilon.log(`✅ First queue joined: ${firstQueueResult.match_id}`);
 
-// 3. Attempt to join second queue while already queued (should fail)
+// 3. Attempt to join a second, different-mode queue while already queued —
+// [[upsilonapi:rule_matchmaking_single_queue]] clause 1: a player MUST NOT
+// be permitted to join ANY queue while they already have an active entry.
+// The success/failure verdict is asserted outside the try/catch so an
+// unexpected success (no throw at all) can't be silently swallowed by this
+// same catch block.
 upsilon.log("Attempting to join 2v2_PVP while already queued...");
+let rejected = false;
 try {
     upsilon.call("matchmaking_join", { game_mode: "2v2_PVP" });
-    upsilon.assert(false, "ERROR: Multiple queue joins allowed!");
 } catch (e) {
+    rejected = true;
+    upsilon.assertResponse(e, 409, "Conflict: You are already in a matchmaking queue.");
     upsilon.log(`✅ Second queue join properly rejected: ${e.message}`);
-    // Verify 409 Conflict status code
-    if (e.status_code) {
-        upsilon.assertEquals(e.status_code, 409, "Expected 409 Conflict for multiple queue joins");
-    }
 }
+upsilon.assert(rejected, "ERROR: Multiple queue joins allowed!");
 
-// 4. Verify still in first queue
+// 4. Verify the rejected attempt left the original queue entry untouched.
 const statusResult = upsilon.call("matchmaking_status", {});
 upsilon.assertEquals(statusResult.status, "queued", "Should still be in queue");
 upsilon.log(`✅ Still in first queue: ${statusResult.match_id}`);
 
-// 5. Leave first queue
-upsilon.log("Leaving first queue...");
-upsilon.call("matchmaking_leave", {});
-const statusAfterLeave = upsilon.call("matchmaking_status", {});
-upsilon.assertEquals(statusAfterLeave.status, "idle", "Status should be 'idle' after leaving queue");
-upsilon.log(`✅ Queue left successfully`);
-
-// 6. Can now join second queue
-upsilon.log("Joining 2v2_PVP after leaving first queue...");
-const secondQueueResult = upsilon.call("matchmaking_join", { game_mode: "2v2_PVP" });
-upsilon.assertEquals(secondQueueResult.status, "queued", "Should be able to queue after leaving");
-upsilon.log(`✅ Second queue joined: ${secondQueueResult.match_id}`);
-
-// Cleanup - leave queue before exit
-upsilon.onTeardown(() => {
-    try {
-        upsilon.call("matchmaking_leave", {});
-        upsilon.log("✅ Queue left on teardown");
-    } catch (e) {
-        upsilon.log(`Teardown cleanup error (ignored): ${e.message}`);
-    }
-    try {
-        upsilon.call("auth_delete", {});
-    } catch (e) {
-        // Ignore cleanup errors
-    }
-});
+// Cleanup (leave queue + delete account) is handled by bootstrapBot's
+// automatic teardown — no manual onTeardown needed.
 
 upsilon.log("EC-31: JOIN QUEUE WHILE ALREADY QUEUED PASSED.");

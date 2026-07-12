@@ -1,7 +1,6 @@
 // upsiloncli/tests/scenarios/edge_auth_invalid_credentials.js
 // @test-link [[api_auth_login]]
 // @test-link [[uc_player_login]]
-// @test-link [[req_security_authorization]]
 
 const agentIndex = upsilon.getAgentIndex();
 const botId = Math.floor(Math.random() * 10000) + "_" + agentIndex;

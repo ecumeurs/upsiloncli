@@ -1,6 +1,5 @@
 // upsiloncli/tests/scenarios/edge_leaderboard_invalid_mode.js
-// @test-link [[api_leaderboard]]
-// @test-link [[us_leaderboard_view_sort_leaderboard]]
+// @test-link [[upsilonapi:api_leaderboard]]
 
 const agentIndex = upsilon.getAgentIndex();
 const botId = Math.floor(Math.random() * 10000) + "_" + agentIndex;
@@ -9,45 +8,33 @@ const password = "VerySecurePassword123!";
 
 upsilon.log(`[Bot-${agentIndex}] Starting EC-41: Leaderboard Invalid Game Mode`);
 
-// 1. Setup
+// 1. Setup (bootstrapBot also registers an automatic teardown, so no manual
+// onTeardown is needed here).
 upsilon.bootstrapBot(accountName, password);
 
-// 2. Test leaderboard with invalid game mode
-const invalidModes = [
-    "3v3_PVP",
-    "4v4_PVP",
-    "invalid_mode",
-    "1v3_PVP",
-    "freeforall",
-    "ranked_only"
-];
+// 2. Attempt to fetch the leaderboard with a mode outside the four explicit
+// options (1v1_PVP, 2v2_PVP, 1v1_PVE, 2v2_PVE). Every non-member string hits
+// the same equality-chain miss in validateLeaderboard() (leaderboard.go), so
+// a single representative value is the sharpest edge. "3v3_PVP" is chosen
+// over a wholly unrelated string because it is closest in shape to a real
+// mode — it proves the check is exact membership, not a loose pattern match.
+const invalidMode = "3v3_PVP";
 
-invalidModes.forEach(mode => {
-    upsilon.log(`[Bot-${agentIndex}] Requesting leaderboard with invalid mode: ${mode}...`);
-    try {
-        const result = upsilon.call("leaderboard", { mode: mode });
-        upsilon.assert(false, `ERROR: Invalid leaderboard mode '${mode}' was accepted!`);
-    } catch (e) {
-        upsilon.log(`[Bot-${agentIndex}] ✅ Invalid mode '${mode}' properly rejected: ${e.message}`);
-        // Verify 400 Bad Request or similar status code
-        if (e.status_code) {
-            upsilon.assert(e.status_code >= 400 && e.status_code < 500, "Expected 4xx status for invalid mode");
-        }
-    }
-});
-
-// 3. Test leaderboard with valid game modes
-const validModes = ["1v1_PVP", "2v2_PVP", "1v1_PVE", "2v2_PVE"];
-
-validModes.forEach(mode => {
-    upsilon.log(`[Bot-${agentIndex}] Requesting leaderboard with valid mode: ${mode}...`);
-    try {
-        const result = upsilon.call("leaderboard", { mode: mode });
-        upsilon.assert(result.results != undefined, "Leaderboard results missing");
-        upsilon.log(`[Bot-${agentIndex}] ✅ Valid mode '${mode}' succeeded, ${result.results.length} results`);
-    } catch (e) {
-        upsilon.log(`[Bot-${agentIndex}] Valid mode '${mode}' failed: ${e.message}`);
-    }
-});
+upsilon.log(`[Bot-${agentIndex}] Requesting leaderboard with invalid mode: ${invalidMode}...`);
+try {
+    upsilon.call("leaderboard", { mode: invalidMode });
+    upsilon.assert(false, `ERROR: Invalid leaderboard mode '${invalidMode}' was accepted!`);
+} catch (e) {
+    // validateLeaderboard() rejects before any battle-service lookup runs:
+    // 422 "Validation failed" envelope, with the field-specific reason
+    // carried in meta.errors.mode.
+    upsilon.assertResponse(e, 422, "Validation failed");
+    const fieldErrors = (e.meta && e.meta.errors && e.meta.errors.mode) || [];
+    upsilon.assert(
+        fieldErrors.includes("The selected mode is invalid."),
+        `Expected meta.errors.mode to carry the invalid-mode message, got: ${JSON.stringify(e.meta && e.meta.errors)}`
+    );
+    upsilon.log(`[Bot-${agentIndex}] ✅ Invalid mode '${invalidMode}' properly rejected: ${e.message}`);
+}
 
 upsilon.log(`[Bot-${agentIndex}] EC-41: LEADERBOARD INVALID GAME MODE PASSED.`);

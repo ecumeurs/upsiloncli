@@ -1,6 +1,5 @@
 // upsiloncli/tests/scenarios/edge_attack_wrong_controller.js
-// @test-link [[mech_skill_validation_turn_controller_identity_verification]]
-// @test-link [[entity_player]]
+// @test-link [[mech_move_validation]]
 //
 // Two bots: bot 0 publishes its entity id; bot 1 tries to attack using bot 0's
 // entity id (which bot 1 does not control) on its own turn.

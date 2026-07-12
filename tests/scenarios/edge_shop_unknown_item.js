@@ -1,5 +1,5 @@
 // upsiloncli/tests/scenarios/edge_shop_unknown_item.js
-// @test-link [[api_shop_purchase]]
+// @test-link [[upsilonapi:api_shop_purchase]]
 //
 // Validates that purchasing a non-existent item ID is rejected.
 
@@ -15,12 +15,14 @@ upsilon.bootstrapBot(accountName, password);
 const ghostId = "00000000-0000-0000-0000-000000000000";
 
 // 2. Attempt purchase
+let rejected = false;
 try {
     upsilon.call("shop_purchase", { shop_item_id: ghostId });
-    upsilon.assert(false, "ERROR: Purchase of ghost item was accepted!");
 } catch (e) {
     upsilon.log(`[Bot-${agentIndex}] ✅ Purchase properly rejected: ${e.message}`);
     upsilon.assertResponse(e, 404, "Shop item not found.");
+    rejected = true;
 }
+upsilon.assert(rejected, "ERROR: Purchase of ghost item was accepted!");
 
 upsilon.log(`[Bot-${agentIndex}] EC-50: SHOP PURCHASE UNKNOWN ITEM PASSED.`);

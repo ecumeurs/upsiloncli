@@ -1,7 +1,6 @@
 // upsiloncli/tests/scenarios/edge_char_reroll_limit.js
-// @test-link [[mech_character_reroll_limit]]
-// @test-link [[us_character_reroll_reroll_counter]]
-// @test-link [[uc_player_registration]]
+// @test-link [[upsilonbattle:mech_character_reroll]]
+// @test-link [[us_character_reroll]]
 
 const agentIndex = upsilon.getAgentIndex();
 const botId = Math.floor(Math.random() * 10000) + "_" + agentIndex;
@@ -42,16 +41,21 @@ for (let i = 1; i <= 3; i++) {
     upsilon.sleep(500);  // Small delay between rerolls
 }
 
-// 3. Attempt 4th reroll (should fail)
+// 3. Attempt 4th reroll (should fail) — the assert-false-on-success lives
+// OUTSIDE the try/catch so an unexpected success can't be swallowed by the
+// same catch that's meant to handle the expected rejection.
 upsilon.log(`[Bot-${agentIndex}] Attempting 4th reroll (should fail)...`);
+let fourthRerollRejected = false;
 try {
     upsilon.call("character_reroll", {
         characterId: charId
     });
-    upsilon.assert(false, "ERROR: 4th reroll was accepted!");
 } catch (e) {
+    fourthRerollRejected = true;
+    upsilon.assertResponse(e, 403, "Reroll limit reached.");
     upsilon.log(`[Bot-${agentIndex}] ✅ 4th reroll properly rejected: ${e.message} (Status: ${e.status})`);
 }
+upsilon.assert(fourthRerollRejected, "ERROR: 4th reroll was accepted (no exception thrown)!");
 
 // 4. Verify reroll count
 const profileInfo = upsilon.call("profile_get", {});

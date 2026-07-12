@@ -1,46 +1,21 @@
 // upsiloncli/tests/scenarios/edge_admin_delete_nonexistent.js
-// @test-link [[uc_admin_user_management]]
-// @test-link [[rule_gdpr_compliance]]
+// @test-link [[upsilonapi:uc_admin_user_management]]
+// @test-link [[upsilonapi:rule_gdpr_compliance]]
+//
+// Validates that an admin's soft-delete of a non-existent user (account_name
+// with no matching row, trashed-inclusive) returns 404, not a silent no-op.
 
-const agentIndex = upsilon.getAgentIndex();
-const botId = Math.floor(Math.random() * 10000) + "_" + agentIndex;
+upsilon.log("Starting EC: Admin Delete Non-Existent User");
 
-upsilon.log(`[Bot-${agentIndex}] Starting EC-45: Soft Delete Non-Existent User`);
+upsilon.adminSection((admin) => {
+    const nonExistentUser = "user_does_not_exist_" + Date.now();
 
-// 1. Setup (regular user, not admin for this test)
-const accountName = "delete_bot_" + botId;
-const password = "VerySecurePassword123!";
-
-upsilon.bootstrapBot(accountName, password);
-
-// 2. Try to soft delete non-existent user
-const nonExistentUser = "user_does_not_exist_" + Date.now();
-upsilon.log(`[Bot-${agentIndex}] Attempting to soft delete non-existent user: ${nonExistentUser}...`);
-
-try {
-    upsilon.call("admin_users", {});
-    upsilon.log(`[Bot-${agentIndex}] Note: Admin users endpoint attempt completed`);
-} catch (e) {
-    upsilon.log(`[Bot-${agentIndex}] Admin access failed (expected for non-admin): ${e.message}`);
-}
-
-// Note: Actual soft delete endpoint test requires admin privileges
-upsilon.log(`[Bot-${agentIndex}] EC-45: NOTE: Actual soft delete test requires admin account`);
-
-// Verify expected error handling
-upsilon.log(`[Bot-${agentIndex}] Testing that 404 errors are handled gracefully...`);
-
-// Test with non-existent character
-try {
-    upsilon.call("profile_character", { characterId: "00000000-0000-0000-0000-000000000000" });
-    upsilon.assert(false, "ERROR: Non-existent character was accepted!");
-} catch (e) {
-    upsilon.log(`[Bot-${agentIndex}] ✅ Non-existent character properly rejected: ${e.message}`);
-    if (e.status_code) {
-        if (e.status_code === 404) {
-            upsilon.log(`[Bot-${agentIndex}] ✅ 404 Not Found for non-existent resource`);
-        }
+    try {
+        admin.call("admin_user_delete", { account_name: nonExistentUser });
+        admin.assert(false, "ERROR: Soft-deleting a non-existent user must return 404");
+    } catch (e) {
+        admin.assertResponse(e, 404, `No query results for model [App\\Models\\User] ${nonExistentUser}`);
     }
-}
+});
 
-upsilon.log(`[Bot-${agentIndex}] EC-45: SOFT DELETE NON-EXISTENT USER PASSED.`);
+upsilon.log("EC: ADMIN DELETE NON-EXISTENT USER PASSED.");

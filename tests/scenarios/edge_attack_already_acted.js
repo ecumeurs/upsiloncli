@@ -1,6 +1,16 @@
 // upsiloncli/tests/scenarios/edge_attack_already_acted.js
-// @test-link [[mech_skill_validation_action_state_verification]]
 // @test-link [[mech_action_economy]]
+//
+// EC-17: attack_checks.go rejects a second "attack" on the same entity in the
+// same turn with entity.hasacted once HasActed is set. NOTE: no atom currently
+// documents this ATTACK-side gate the way mech_move_validation enumerates
+// "Already Moved" or mech_skill_validation enumerates "Action State
+// Verification" for SKILL use — mech_action_economy is the closest real,
+// on-point atom (Attack() itself carries @spec-link [[mech_action_economy]]).
+// The prior link, [[mech_skill_validation_action_state_verification]], was a
+// phantom compound ID (no such atom exists) AND wrong-domain even resolved to
+// its base ([[mech_skill_validation]] governs skill.go's entity.alreadyacted,
+// not attack.go's entity.hasacted).
 
 const agentIndex = upsilon.getAgentIndex();
 const botId = Math.floor(Math.random() * 10000) + "_" + agentIndex;
@@ -52,6 +62,7 @@ while (rounds < 60 && !secondAttackRejected) {
             upsilon.assert(false, "ERROR: Second attack in same turn was accepted!");
         } catch (e) {
             upsilon.log(`[Bot-${agentIndex}] ✅ Second attack rejected: ${e.message} (key=${e.error_key})`);
+            upsilon.assertEquals(e.error_key, "entity.hasacted", "Expected entity.hasacted on second attack same turn");
             secondAttackRejected = true;
         }
     } else {

@@ -1,5 +1,5 @@
 // upsiloncli/tests/scenarios/edge_skill_unequip_not_equipped.js
-// @test-link [[api_character_skill_inventory]]
+// @test-link [[upsilonapi:api_character_skill_inventory]]
 //
 // Validates that trying to unequip a skill that is not currently equipped is rejected.
 
@@ -20,13 +20,17 @@ upsilon.assert(skill && skill.id, "Roll must return a skill");
 upsilon.assert(!skill.equipped, "Freshly rolled skill must be unequipped");
 upsilon.log(`[Bot-${agentIndex}] Skill rolled (unequipped): ${skill.id}`);
 
-// Attempt to unequip a skill that was never equipped
+// Attempt to unequip a skill that was never equipped — the assert-false-on-
+// success lives OUTSIDE the try/catch so an unexpected success can't be
+// swallowed by the same catch that's meant to handle the expected rejection.
+let rejected = false;
 try {
     upsilon.call("skill_unequip", { characterId: charId, skillId: skill.id });
-    upsilon.assert(false, "ERROR: Unequipping a non-equipped skill must be rejected");
 } catch (e) {
-    upsilon.log(`[Bot-${agentIndex}] ✅ Unequip of non-equipped skill rejected: ${e.message}`);
+    rejected = true;
     upsilon.assertResponse(e, 422, "Skill is not currently equipped.");
+    upsilon.log(`[Bot-${agentIndex}] ✅ Unequip of non-equipped skill rejected: ${e.message}`);
 }
+upsilon.assert(rejected, "ERROR: Unequipping a non-equipped skill was accepted!");
 
 upsilon.log(`[Bot-${agentIndex}] EC: UNEQUIP NOT EQUIPPED PASSED.`);

@@ -1,6 +1,8 @@
-// upsiloncli/tests/scenarios/edge_movement_wrong_controller.js
-// @test-link [[mech_move_validation_controller_mismatch]]
-// @test-link [[entity_player]]
+// upsiloncli/tests/scenarios/edge_movement_wrong_controller_with_2.js
+// @test-link [[mech_move_validation]]
+//
+// Two bots: bot 0 publishes its entity id; bot 1 tries to move bot 0's
+// entity (which bot 1 does not control) and expects entity.controller.mismatch.
 
 const agentCount = 2;
 const agentIndex = upsilon.getAgentIndex();

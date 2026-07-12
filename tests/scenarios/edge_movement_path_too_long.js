@@ -1,7 +1,5 @@
 // upsiloncli/tests/scenarios/edge_movement_path_too_long.js
-// @test-link [[mech_move_validation_path_length_credits]]
-// @test-link [[mech_action_economy]]
-// @test-link [[entity_character]]
+// @test-link [[mech_move_validation]]
 
 const agentIndex = upsilon.getAgentIndex();
 const botId = Math.floor(Math.random() * 10000) + "_" + agentIndex;
@@ -51,22 +49,5 @@ const updatedChar = updatedBoard.game_state.players.flatMap(p => p.entities).fin
 upsilon.assertEquals(updatedChar.position.x, startPos.x, "Character X position changed after failed move");
 upsilon.assertEquals(updatedChar.position.y, startPos.y, "Character Y position changed after failed move");
 upsilon.log(`[Bot-${agentIndex}] ✅ Position unchanged (${updatedChar.position.x},${updatedChar.position.y})`);
-
-// 4. Attempt valid move within credits
-if (moveCredits > 0) {
-    const validPath = [{ x: startPos.x + 1, y: startPos.y }];
-    upsilon.log(`[Bot-${agentIndex}] Attempting valid 1-tile move...`);
-    try {
-        upsilon.call("game_action", {
-            id: matchData.match_id,
-            type: "move",
-            entity_id: myChar.id,
-            target_coords: validPath
-        });
-        upsilon.log(`[Bot-${agentIndex}] ✅ Valid move succeeded`);
-    } catch (e) {
-        upsilon.log(`[Bot-${agentIndex}] Valid move failed (may be expected): ${e.message}`);
-    }
-}
 
 upsilon.log(`[Bot-${agentIndex}] EC-04: MOVEMENT PATH TOO LONG PASSED.`);

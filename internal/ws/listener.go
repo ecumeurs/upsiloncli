@@ -129,6 +129,11 @@ func (l *Listener) streamIdentity() string {
 // a token is held, torn down on logout, reconnected when the authenticated
 // user changes. Replaces the old channel-subscription reconciliation.
 func (l *Listener) Sync() {
+	// No token held: the stream never connects. Mirrors the server's own
+	// bearer-auth gate on GET /api/v1/events (RequireAuth) — no attempt is
+	// even made client-side without a token to send.
+	//
+	// @spec-link [[api_websocket]]
 	if l.Session.Token() == "" {
 		l.Stop()
 		return

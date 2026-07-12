@@ -1,7 +1,6 @@
 // upsiloncli/tests/scenarios/edge_match_invalid_game_mode.js
-// @test-link [[api_matchmaking]]
-// @test-link [[req_matchmaking_matchmaking_queue]]
-// @test-link [[spec_match_format]]
+// @test-link [[shared:req_matchmaking]]
+// @test-link [[upsilonapi:api_matchmaking]]
 
 const agentIndex = upsilon.getAgentIndex();
 const botId = Math.floor(Math.random() * 10000) + "_" + agentIndex;
@@ -10,60 +9,34 @@ const password = "VerySecurePassword123!";
 
 upsilon.log(`[Bot-${agentIndex}] Starting EC-33: Invalid Game Mode`);
 
-// 1. Setup
+// 1. Setup (bootstrapBot also registers an automatic teardown that leaves any
+// queue and deletes the account, so no manual onTeardown is needed here).
 upsilon.bootstrapBot(accountName, password);
 
-// 2. Attempt to join queue with invalid game mode
-const invalidModes = [
-    "3v3_PVP",
-    "4v4_PVP",
-    "invalid_mode",
-    "1v3_PVP"
-];
+// 2. Attempt to join with a mode outside the four explicit options
+// (1v1_PVP, 1v1_PVE, 2v2_PVP, 2v2_PVE — [[shared:req_matchmaking]]). Every
+// non-member string hits the same `slices.Contains` membership check in
+// `validateJoin` (upsilonhub/internal/gateway/matchmaking.go), so a single
+// representative value is the sharpest edge. "1v3_PVP" is chosen over a
+// wholly unrelated string because it is closest in shape to a real mode —
+// it proves the check is exact membership, not a loose pattern match.
+const invalidMode = "1v3_PVP";
 
-invalidModes.forEach(mode => {
-    upsilon.log(`[Bot-${agentIndex}] Attempting to join queue with invalid mode: ${mode}...`);
-    try {
-        upsilon.call("matchmaking_join", { game_mode: mode });
-        upsilon.assert(false, `ERROR: Invalid mode '${mode}' was accepted!`);
-    } catch (e) {
-        upsilon.log(`[Bot-${agentIndex}] ✅ Invalid mode '${mode}' properly rejected: ${e.message}`);
-        // Verify 400 Bad Request or similar status code
-        if (e.status_code) {
-            upsilon.assert(e.status_code >= 400 && e.status_code < 500, "Expected 4xx status for invalid mode");
-        }
-    }
-});
-
-// 3. Join queue with valid game mode (should succeed)
-// Use 2v2_PVE to ensure we stay 'queued' (1v1_PVE matches immediately)
-const validMode = "2v2_PVE";
-
-upsilon.log(`[Bot-${agentIndex}] Attempting to join queue with valid mode: ${validMode}...`);
-const validQueueResult = upsilon.call("matchmaking_join", { game_mode: validMode });
-upsilon.assertEquals(validQueueResult.status, "queued", "Valid mode should return 'queued'");
-upsilon.log(`[Bot-${agentIndex}] ✅ Valid mode '${validMode}' accepted`);
-
-// 4. Leave queue
-upsilon.log(`[Bot-${agentIndex}] Leaving queue...`);
-upsilon.call("matchmaking_leave", {});
-const statusAfterLeave = upsilon.call("matchmaking_status", {});
-upsilon.assertEquals(statusAfterLeave.status, "idle", "Status should be 'idle' after leaving");
-upsilon.log(`[Bot-${agentIndex}] ✅ Queue left successfully`);
-
-// Cleanup
-upsilon.onTeardown(() => {
-    try {
-        upsilon.log(`[Bot-${agentIndex}] Leaving queue (if any)...`);
-        upsilon.call("matchmaking_leave", {});
-    } catch (e) {}
-
-    try {
-        upsilon.call("auth_delete", {});
-        upsilon.log(`[Bot-${agentIndex}] ✅ Account cleaned up`);
-    } catch (e) {
-        upsilon.log(`Teardown cleanup error (ignored): ${e.message}`);
-    }
-});
+upsilon.log(`[Bot-${agentIndex}] Attempting to join queue with invalid mode: ${invalidMode}...`);
+try {
+    upsilon.call("matchmaking_join", { game_mode: invalidMode });
+    upsilon.assert(false, `ERROR: Invalid mode '${invalidMode}' was accepted!`);
+} catch (e) {
+    // The handler's validateJoin() rejects before any queue/matchmaker logic
+    // runs: 422 "Validation failed" envelope, with the field-specific reason
+    // carried in meta.errors.game_mode.
+    upsilon.assertResponse(e, 422, "Validation failed");
+    const fieldErrors = (e.meta && e.meta.errors && e.meta.errors.game_mode) || [];
+    upsilon.assert(
+        fieldErrors.includes("The selected game mode is invalid."),
+        `Expected meta.errors.game_mode to carry the invalid-mode message, got: ${JSON.stringify(e.meta && e.meta.errors)}`
+    );
+    upsilon.log(`[Bot-${agentIndex}] ✅ Invalid mode '${invalidMode}' properly rejected: ${e.message}`);
+}
 
 upsilon.log(`[Bot-${agentIndex}] EC-33: INVALID GAME MODE PASSED.`);

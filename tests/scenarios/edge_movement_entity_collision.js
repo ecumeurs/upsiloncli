@@ -1,6 +1,6 @@
 // upsiloncli/tests/scenarios/edge_movement_entity_collision.js
-// @test-link [[mech_move_validation_entity_collision]]
-// @test-link [[entity_character]]
+// @test-link [[mech_move_validation]]
+// @test-link [[mechanic_multi_entity_cell_system]]
 
 const agentIndex = upsilon.getAgentIndex();
 const botId = Math.floor(Math.random() * 10000) + "_" + agentIndex;

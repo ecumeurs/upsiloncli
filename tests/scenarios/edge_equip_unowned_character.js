@@ -1,5 +1,5 @@
 // upsiloncli/tests/scenarios/edge_equip_unowned_character.js
-// @test-link [[api_character_equip]]
+// @test-link [[upsilonapi:api_equipment_management]]
 //
 // Validates that a user cannot equip an item to a character they don't own.
 
@@ -30,8 +30,8 @@ try {
     upsilon.call("character_equip", { characterId: charA, item_id: itemB });
     upsilon.assert(false, "ERROR: Equipping to unowned character was accepted!");
 } catch (e) {
+    upsilon.assertResponse(e, 403, "This action is unauthorized.");
     upsilon.log(`[Bot-${agentIndex}] ✅ Equip properly rejected: ${e.message} (Status: ${e.status})`);
-    upsilon.assert(e.status === 403 || e.status === 404, "Error must be 403 Forbidden or 404 Not Found");
 }
 
 upsilon.log(`[Bot-${agentIndex}] EC-53: EQUIP UNOWNED CHARACTER PASSED.`);

@@ -1,6 +1,5 @@
 // upsiloncli/tests/scenarios/edge_api_invalid_uuid.js
-// @test-link [[api_standard_envelope]]
-// @test-link [[entity_character]]
+// @test-link [[upsilonapi:api_profile_character]]
 
 const agentIndex = upsilon.getAgentIndex();
 const botId = Math.floor(Math.random() * 10000) + "_" + agentIndex;
@@ -18,51 +17,30 @@ upsilon.assert(profile.length > 0, "No characters found");
 const validCharId = profile[0].id;
 upsilon.log(`[Bot-${agentIndex}] Valid character ID: ${validCharId}`);
 
-// 3. Test endpoints with invalid UUID formats
-const invalidUUIDs = [
-    "not-a-uuid",
-    "1234567890",
-    "invalid-uuid-format",
-    "too-short",
-    "uuid-with-special@chars!",
-    "uuid-with-spaces",
-    ""
-];
+// 3. Malformed (non-UUID) characterId. findCharacter() (profile.go) does
+// uuid.Parse(id) with no format pre-check; a parse failure panics via
+// must(err) and is rendered by the Recovery middleware as a 500 -- this is
+// intentional byte-parity with the legacy PHP QueryException triggered by
+// the same malformed id (see profile.go's findCharacter comment). It is NOT
+// a 4xx validation edge, so the assertion below pins the real 500/message
+// rather than an assumed 4xx.
+const invalidUUID = "not-a-uuid";
+upsilon.log(`[Bot-${agentIndex}] Testing with invalid UUID: ${invalidUUID}...`);
 
-invalidUUIDs.forEach(uuid => {
-    if (uuid === "") {
-        upsilon.log(`[Bot-${agentIndex}] Testing with empty UUID...`);
-    } else {
-        upsilon.log(`[Bot-${agentIndex}] Testing with invalid UUID: ${uuid}...`);
-    }
-
-    // Test profile character endpoint
-    try {
-        upsilon.call("profile_character", { characterId: uuid });
-        upsilon.assert(false, `ERROR: Invalid UUID '${uuid}' was accepted!`);
-    } catch (e) {
-        upsilon.log(`[Bot-${agentIndex}] ✅ Invalid UUID '${uuid}' properly rejected: ${e.message}`);
-        // Verify 400 Bad Request or similar status code
-        if (e.status_code) {
-            upsilon.assert(e.status_code >= 400 && e.status_code < 500, "Expected 4xx status for invalid UUID");
-        }
-    }
-});
+let rejected = false;
+try {
+    upsilon.call("profile_character", { characterId: invalidUUID });
+} catch (e) {
+    rejected = true;
+    upsilon.assertResponse(e, 500, `invalid UUID length: ${invalidUUID.length}`);
+}
+upsilon.assert(rejected, `ERROR: Invalid UUID '${invalidUUID}' was accepted!`);
+upsilon.log(`[Bot-${agentIndex}] ✅ Invalid UUID '${invalidUUID}' properly rejected with 500 (byte-parity parse panic)`);
 
 // 4. Verify valid UUID still works
 upsilon.log(`[Bot-${agentIndex}] Testing with valid UUID...`);
 const validResult = upsilon.call("profile_character", { characterId: validCharId });
 upsilon.assert(validResult != null, "Valid UUID request failed");
 upsilon.log(`[Bot-${agentIndex}] ✅ Valid UUID request succeeded, character: ${validResult.name}`);
-
-// Cleanup
-upsilon.onTeardown(() => {
-    try {
-        upsilon.call("auth_delete", {});
-        upsilon.log(`[Bot-${agentIndex}] ✅ Account cleaned up`);
-    } catch (e) {
-        upsilon.log(`Teardown cleanup error (ignored): ${e.message}`);
-    }
-});
 
 upsilon.log(`[Bot-${agentIndex}] EC-38: INVALID UUID FORMAT PASSED.`);

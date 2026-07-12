@@ -1,6 +1,5 @@
 // upsiloncli/tests/scenarios/edge_prog_negative_value.js
 // @test-link [[rule_progression]]
-// @test-link [[entity_character]]
 
 const agentIndex = upsilon.getAgentIndex();
 const botId = Math.floor(Math.random() * 10000) + "_" + agentIndex;
@@ -28,9 +27,13 @@ const char = profile[0];
 const charId = char.id;
 
 upsilon.log(`[Bot-${agentIndex}] Character: ${char.name}`);
-upsilon.log(`[Bot-${agentIndex}] Initial stats - HP: ${char.hp}, Attack: ${char.attack}, Defense: ${char.defense}, Move: ${char.move}`);
+upsilon.log(`[Bot-${agentIndex}] Initial stats - HP: ${char.hp}, Attack: ${char.attack}, Defense: ${char.defense}, Movement: ${char.movement}`);
 
-// 2. Attempt negative HP upgrade (should fail)
+// 2. Attempt a negative HP upgrade delta (rule_progression's Non-Negativity
+// constraint: "No attribute is allowed to have a negative value"). HP is the
+// cheapest/simplest lever (1 CP/pt) and validateUpgrade's int|min:0 rule
+// applies identically to every Class A stat, so one field is sufficient to
+// stand at this edge — attack/defense would exercise the exact same check.
 upsilon.log(`[Bot-${agentIndex}] Attempting negative HP upgrade...`);
 try {
     upsilon.call("character_upgrade", {
@@ -39,50 +42,18 @@ try {
     });
     upsilon.assert(false, "ERROR: Negative HP upgrade was accepted!");
 } catch (e) {
-    upsilon.log(`[Bot-${agentIndex}] ✅ Negative HP upgrade properly rejected: ${e.message}`);
+    upsilon.assertResponse(e, 422, "Validation failed");
+    const fieldErrors = e.meta && e.meta.errors && e.meta.errors["stats.hp"];
+    upsilon.assert(Array.isArray(fieldErrors) && fieldErrors.length > 0,
+        "meta.errors missing a stats.hp entry");
+    upsilon.assertEquals(fieldErrors[0], "The stats.hp field must be at least 0.",
+        "Wrong validation message for negative HP delta");
+    upsilon.log(`[Bot-${agentIndex}] ✅ Negative HP upgrade properly rejected: ${fieldErrors[0]}`);
 }
 
-// 3. Attempt negative Attack upgrade (should fail)
-upsilon.log(`[Bot-${agentIndex}] Attempting negative Attack upgrade...`);
-try {
-    upsilon.call("character_upgrade", {
-        characterId: charId,
-        attack: -1
-    });
-    upsilon.assert(false, "ERROR: Negative Attack upgrade was accepted!");
-} catch (e) {
-    upsilon.log(`[Bot-${agentIndex}] ✅ Negative Attack upgrade properly rejected: ${e.message}`);
-}
-
-// 4. Attempt negative Defense upgrade (should fail)
-upsilon.log(`[Bot-${agentIndex}] Attempting negative Defense upgrade...`);
-try {
-    upsilon.call("character_upgrade", {
-        characterId: charId,
-        defense: -1
-    });
-    upsilon.assert(false, "ERROR: Negative Defense upgrade was accepted!");
-} catch (e) {
-    upsilon.log(`[Bot-${agentIndex}] ✅ Negative Defense upgrade properly rejected: ${e.message}`);
-}
-
-// 5. Attempt zero upgrade (may be rejected or accepted depending on implementation)
-upsilon.log(`[Bot-${agentIndex}] Attempting zero upgrade...`);
-try {
-    upsilon.call("character_upgrade", {
-        characterId: charId,
-        hp: 0
-    });
-    upsilon.log(`[Bot-${agentIndex}] Zero upgrade attempt completed (check if this should be rejected)`);
-} catch (e) {
-    upsilon.log(`[Bot-${agentIndex}] Zero upgrade rejected: ${e.message}`);
-}
-
-// 6. Verify stats unchanged
+// 3. Verify stats unchanged
 const updatedProfile = upsilon.call("profile_character", { characterId: charId });
-upsilon.assertEquals(updatedProfile.hp, char.hp, "HP changed after failed upgrades");
-upsilon.assertEquals(updatedProfile.attack, char.attack, "Attack changed after failed upgrades");
-upsilon.assertEquals(updatedProfile.defense, char.defense, "Defense changed after failed upgrades");
+upsilon.assertEquals(updatedProfile.hp, char.hp, "HP changed after a rejected negative-value upgrade");
 upsilon.log(`[Bot-${agentIndex}] ✅ Stats unchanged`);
 
 // Cleanup

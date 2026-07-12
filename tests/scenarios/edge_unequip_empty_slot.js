@@ -1,5 +1,5 @@
 // upsiloncli/tests/scenarios/edge_unequip_empty_slot.js
-// @test-link [[api_character_unequip]]
+// @test-link [[upsilonapi:api_equipment_management]]
 //
 // Validates that unequipping an already empty slot returns 404.
 

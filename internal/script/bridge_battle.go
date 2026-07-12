@@ -599,6 +599,8 @@ func (a *Agent) jsWaitForMatch() interface{} {
 // jsAdminSection executes a callback as the administrative user.
 // It snapshots the current session, performs admin login, runs the callback,
 // and automatically restores the original session via a defer block.
+//
+// @spec-link [[mechanic_script_admin_section]]
 func (a *Agent) jsAdminSection(call goja.FunctionCall) goja.Value {
 	if len(call.Arguments) < 1 {
 		panic(a.VM.ToValue("adminSection requires a callback function"))

@@ -1,5 +1,4 @@
 // upsiloncli/tests/scenarios/edge_attack_target_out_of_grid.js
-// @test-link [[mech_skill_validation_grid_boundaries_verification]]
 // @test-link [[entity_grid]]
 
 const agentIndex = upsilon.getAgentIndex();
@@ -39,27 +38,9 @@ try {
     });
     upsilon.assert(false, "ERROR: Attack outside grid was accepted!");
 } catch (e) {
-    upsilon.log(`[Bot-${agentIndex}] ✅ Out-of-grid attack properly rejected: ${e.message}`);
-}
-
-// 4. Attempt attack on enemy within grid (should succeed or fail for other reasons)
-const enemyChars = upsilon.myFoesCharacters();
-if (enemyChars.length > 0) {
-    const targetEnemy = enemyChars[0];
-    upsilon.log(`[Bot-${agentIndex}] Attempting attack on enemy at ${targetEnemy.position.x},${targetEnemy.position.y}...`);
-    try {
-        upsilon.call("game_action", {
-            id: matchData.match_id,
-            type: "attack",
-            entity_id: myChar.id,
-            target_coords: [targetEnemy.position]
-        });
-        upsilon.log(`[Bot-${agentIndex}] ✅ In-grid attack succeeded`);
-    } catch (e) {
-        upsilon.log(`[Bot-${agentIndex}] In-grid attack failed (may be expected): ${e.message}`);
-    }
-} else {
-    upsilon.log(`[Bot-${agentIndex}] SKIP: No enemies found`);
+    upsilon.log(`[Bot-${agentIndex}] ✅ Out-of-grid attack properly rejected: ${e.message} (key=${e.error_key})`);
+    upsilon.assertEquals(e.error_key, "entity.attack.target.invalid",
+        "Expected exactly entity.attack.target.invalid, got: " + e.error_key);
 }
 
 upsilon.log(`[Bot-${agentIndex}] EC-14: ATTACK TARGET OUT OF GRID PASSED.`);

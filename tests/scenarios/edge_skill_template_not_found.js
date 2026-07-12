@@ -1,5 +1,5 @@
 // upsiloncli/tests/scenarios/edge_skill_template_not_found.js
-// @test-link [[api_skill_template_browse]]
+// @test-link [[upsilonapi:api_skill_template_browse]]
 //
 // Validates that requesting a non-existent skill template returns 404.
 
@@ -15,12 +15,14 @@ upsilon.bootstrapBot(accountName, password);
 // Use a well-formed but non-existent UUID
 const fakeId = "00000000-0000-0000-0000-000000000000";
 
+let rejected = false;
 try {
     upsilon.call("skill_template_get", { id: fakeId });
-    upsilon.assert(false, "ERROR: Fetching non-existent template must return 404");
 } catch (e) {
     upsilon.log(`[Bot-${agentIndex}] ✅ Non-existent template rejected: ${e.message}`);
     upsilon.assertResponse(e, 404, "No query results for model");
+    rejected = true;
 }
+upsilon.assert(rejected, "ERROR: Fetching non-existent template must return 404");
 
 upsilon.log(`[Bot-${agentIndex}] EC: SKILL TEMPLATE NOT FOUND PASSED.`);

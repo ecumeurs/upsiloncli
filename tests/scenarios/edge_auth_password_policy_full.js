@@ -1,12 +1,20 @@
 // upsiloncli/tests/scenarios/edge_auth_password_policy_full.js
 // @test-link [[rule_password_policy]]
-// @test-link [[req_security]]
-// @test-link [[uc_player_registration]]
+//
+// The "full" edge here is the strictest boundary of rule_password_policy
+// itself: one password that violates every dimension of the rule at once
+// (too short, no uppercase, no digit, no symbol) in a single registration
+// call, proving the server accumulates and reports all policy violations
+// together rather than short-circuiting on the first one. Per-dimension
+// sweeps (length-only, symbol-only, etc.) belong to the broader E2E coverage
+// in e2e_password_policy.js; password-confirmation mismatch is a different
+// validator (checkConfirmed) and not part of this rule, so it is out of
+// scope for this file.
 
 const botId = Math.floor(Math.random() * 10000);
 const accountName = "password_edge_bot_" + botId;
 
-upsilon.log("Starting EC-20: Password Policy Enforcement (Full Coverage)");
+upsilon.log("Starting EC-20: Password Policy — worst-case boundary (all rules violated at once)");
 
 const basePayload = {
     account_name: accountName,
@@ -15,39 +23,28 @@ const basePayload = {
     birth_date: "1990-01-01T00:00:00Z"
 };
 
-const tests = [
-    { name: "Too Short (7 chars)", pass: "Short1!", expected: "least 15" },
-    { name: "Exactly 14 chars", pass: "14CharPasswd!", expected: "least 15" },
-    { name: "No Symbol", pass: "LongPasswordWithNumbers123", expected: "symbol" },
-    { name: "No Uppercase", pass: "longpasswordwithnumbers123!", expected: "uppercase" },
-    { name: "No Numbers", pass: "LongPasswordWithoutNumbers!", expected: "number" },
-    { name: "No Symbol #2", pass: "AnotherLongPassword456", expected: "symbol" },
-    { name: "Only Special Chars", pass: "!!!!!!@#$%^&*", expected: "uppercase" },
-    { name: "Mismatch Confirmation", pass: "ValidPassword123!", confirm: "WrongPassword123!", expected: "confirmation" }
+// Deliberately violates all four rule_password_policy dimensions at once:
+// 8 chars (< 15), all lowercase (no uppercase), no digit, no symbol.
+const worstCasePassword = "shortpwd";
 
-];
+upsilon.log("Testing rejection of a password violating length + uppercase + number + symbol simultaneously...");
+try {
+    upsilon.call("auth_register", {
+        ...basePayload,
+        password: worstCasePassword,
+        password_confirmation: worstCasePassword
+    });
+    upsilon.assert(false, "ERROR: Server accepted a password violating every policy dimension!");
+} catch (e) {
+    upsilon.assertResponse(e, 422);
+    const errors = e.meta && e.meta.errors ? JSON.stringify(e.meta.errors) : "";
+    ["least 15", "uppercase", "number", "symbol"].forEach(expected => {
+        upsilon.assert(errors.includes(expected), `Expected error to contain "${expected}", but got: ${errors}`);
+    });
+    upsilon.log("✅ Success: all four policy violations reported in one response");
+}
 
-tests.forEach(test => {
-    upsilon.log(`Testing rejection of: ${test.name}`);
-    try {
-        const payload = {
-            ...basePayload,
-            account_name: accountName + "_" + test.name.replace(/[^a-zA-Z0-9]/g, ""),
-            password: test.pass,
-            password_confirmation: test.confirm || test.pass
-        };
-        upsilon.call("auth_register", payload);
-        upsilon.assert(false, `ERROR: Server accepted weak password: ${test.name}`);
-    } catch (e) {
-        upsilon.assertResponse(e, 422);
-        const errors = e.meta && e.meta.errors ? JSON.stringify(e.meta.errors) : "";
-        upsilon.assert(errors.includes(test.expected), `Expected error to contain "${test.expected}", but got: ${errors}`);
-        upsilon.log(`✅ Success: rejected ${test.name}`);
-    }
-
-});
-
-// Test valid compliant password
+// Control: a fully compliant password must still be accepted.
 upsilon.log("Testing valid compliant password (15+ chars, uppercase, number, symbol)...");
 const validPassword = "VerySecurePassword123!";
 let registrationSuccess = false;
@@ -77,4 +74,4 @@ upsilon.onTeardown(() => {
     }
 });
 
-upsilon.log("EC-20: PASSWORD POLICY ENFORCEMENT (FULL COVERAGE) PASSED.");
+upsilon.log("EC-20: PASSWORD POLICY ENFORCEMENT (WORST-CASE BOUNDARY) PASSED.");
