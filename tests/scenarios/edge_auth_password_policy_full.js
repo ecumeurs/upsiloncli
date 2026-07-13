@@ -7,9 +7,14 @@
 // call, proving the server accumulates and reports all policy violations
 // together rather than short-circuiting on the first one. Per-dimension
 // sweeps (length-only, symbol-only, etc.) belong to the broader E2E coverage
-// in e2e_password_policy.js; password-confirmation mismatch is a different
-// validator (checkConfirmed) and not part of this rule, so it is out of
-// scope for this file.
+// in e2e_password_policy.js.
+//
+// This file also pins the one sharpest edge of the sibling `checkConfirmed`
+// validator (password vs password_confirmation mismatch, validation.go) —
+// dropped during the ISS-107 audit rewrite and restored here since it is a
+// real, CLI-reachable rejection on the same `auth_register` call. A fully
+// policy-compliant password is used for that sub-case so the confirmation
+// check is isolated from rule_password_policy's own violations.
 
 const botId = Math.floor(Math.random() * 10000);
 const accountName = "password_edge_bot_" + botId;
@@ -43,6 +48,31 @@ try {
     });
     upsilon.log("✅ Success: all four policy violations reported in one response");
 }
+
+// Focused edge: password_confirmation mismatch (checkConfirmed, validation.go).
+// Uses a fully rule_password_policy-compliant password so the ONLY violation
+// present is the confirmation mismatch, isolating it from the policy checks
+// exercised above.
+upsilon.log("Testing rejection of a password / password_confirmation mismatch...");
+const mismatchAccountName = "password_edge_mismatch_" + botId;
+const mismatchPassword = "VerySecurePassword123!";
+let mismatchRejected = false;
+try {
+    upsilon.call("auth_register", {
+        ...basePayload,
+        account_name: mismatchAccountName,
+        email: mismatchAccountName + "@example.com",
+        password: mismatchPassword,
+        password_confirmation: mismatchPassword + "x"
+    });
+} catch (e) {
+    upsilon.assertResponse(e, 422);
+    const errors = e.meta && e.meta.errors ? JSON.stringify(e.meta.errors) : "";
+    upsilon.assert(errors.includes("confirmation does not match"), `Expected a confirmation-mismatch error, but got: ${errors}`);
+    mismatchRejected = true;
+}
+upsilon.assert(mismatchRejected, "ERROR: Server accepted a password/password_confirmation mismatch!");
+upsilon.log("✅ Success: password confirmation mismatch rejected");
 
 // Control: a fully compliant password must still be accepted.
 upsilon.log("Testing valid compliant password (15+ chars, uppercase, number, symbol)...");

@@ -1,5 +1,5 @@
 // upsiloncli/tests/scenarios/e2e_session_timeout.js
-// @test-link [[requirement_req_ui_session_timeout]]
+// @test-link [[req_security_token_ttl]]
 // @test-link [[api_auth_login]]
 
 /**
