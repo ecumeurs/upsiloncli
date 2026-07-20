@@ -35,6 +35,8 @@ quarantine_reason() {
             echo "ISS-108 — board-gen doesn't guarantee an obstacle adjacent to spawn (~20% flaky)" ;;
         edge_attack_target_out_of_grid)
             echo "ISS-110 — PVE AI initiative RNG can wipe the squad before the player's turn (~20% flaky)" ;;
+        edge_movement_already_attacked)
+            echo "ISS-110 — same PVE AI initiative RNG; probe requires surviving enough turns to reach adjacency (~20% flaky)" ;;
         edge_admin_private_data_access)
             echo "ISS-116 — admin user registry leaks full_address/birth_date (intentional red)" ;;
     esac
