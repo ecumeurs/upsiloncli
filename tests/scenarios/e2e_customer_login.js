@@ -30,6 +30,11 @@ const loginResponse = upsilon.call("auth_login", {
 upsilon.assert(loginResponse.token != null, "No JWT token issued on successful login");
 upsilon.log("✅ Login succeeded with valid credentials");
 
+// Enroll in battle before reading the battle-scoped profile. Under the
+// game-agnostic model, registration creates only the account+token; games own
+// enrollment, so /profile 404s until battle/enroll provisions the roster+stats.
+upsilon.call("battle_enroll", {});
+
 // 3. Player accesses protected endpoints using token
 const profile = upsilon.call("profile_get", {});
 upsilon.assert(profile != null, "Could not access protected dashboard");
