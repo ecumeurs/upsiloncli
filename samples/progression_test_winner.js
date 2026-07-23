@@ -14,14 +14,17 @@ upsilon.onTeardown(() => {
 });
 
 // Authentication
-upsilon.call("auth_register", { 
-    account_name: accountName, 
+upsilon.call("auth_register", {
+    account_name: accountName,
     email: accountName + "@example.com",
     password: password,
     password_confirmation: password,
     full_address: "123 Victory Lane, Gamertown",
     birth_date: "1990-01-01"
 });
+
+// Phase-4 auth cutover: register no longer creates a roster — enroll first.
+upsilon.call("battle_enroll", {});
 
 // Join Matchmaking
 upsilon.call("matchmaking_join", { game_mode: "1v1_PVP" });
@@ -37,8 +40,7 @@ upsilon.assert(endEvent != null, "Game did not end!");
 upsilon.log("Game ended. Winner Team: " + endEvent.data.winner_team_id);
 
 // Check Progression
-let myProfile = upsilon.call("auth_login", { account_name: accountName, password: password });
-let characters = myProfile.user.characters;
+let characters = upsilon.call("profile_characters", {});
 upsilon.assert(characters.length > 0, "No characters found!");
 
 let targetChar = characters[0];

@@ -20,6 +20,9 @@ upsilon.onTeardown(() => {
     try { upsilon.call("auth_delete", {}); } catch (e) {}
 });
 
+// Phase-4 auth cutover: register no longer creates a roster — enroll first.
+upsilon.call("battle_enroll", {});
+
 upsilon.syncGroup("pvp_test_2v2", 4);
 
 upsilon.log("[Forfeiter 2v2] Joining Matchmaking AS 2v2_PVP...");

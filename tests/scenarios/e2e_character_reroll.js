@@ -18,8 +18,17 @@ const regResponse = upsilon.call("auth_register", {
     birth_date: "1990-01-01T00:00:00Z"
 });
 
-const charId = regResponse.user.characters[0].id;
-const initialStats = JSON.stringify(regResponse.user.characters[0]);
+upsilon.assert(regResponse.user != null, "Registration failed");
+
+// Phase-4 auth cutover: register no longer creates a roster — enroll first.
+// @test-link [[mechanic_bot_enrollment]]
+upsilon.call("battle_enroll", {});
+
+// Get character roster
+const profile = upsilon.call("profile_characters", {});
+upsilon.assert(profile.length > 0, "No characters found");
+const charId = profile[0].id;
+const initialStats = JSON.stringify(profile[0]);
 upsilon.log(`Initial character stats: ${initialStats}`);
 
 // 2. Perform Reroll (Maximum 3)

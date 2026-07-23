@@ -24,6 +24,10 @@ upsilon.onTeardown(() => {
     try { upsilon.call("auth_delete", {}); } catch (e) {}
 });
 
+// 1.5 Phase-4 auth cutover: register no longer creates a roster — enroll
+// into tactical battle before touching characters or matchmaking.
+upsilon.call("battle_enroll", {});
+
 // 2. Coordination
 if (Role === "WINNER") {
     upsilon.setShared(sharedKey, true);
@@ -43,8 +47,8 @@ if (Role === "WINNER") {
 
 // 2.5 Pre-Win Upgrade Lock Validation
 if (Role === "WINNER") {
-    let profile = upsilon.call("profile_get", {});
-    let charId = profile.characters[0].id;
+    let characters = upsilon.call("profile_characters", {});
+    let charId = characters[0].id;
 
     upsilon.log("[WINNER] Testing Pre-Win Upgrade Lock...");
     try {
@@ -81,10 +85,11 @@ if (Role === "LOSER") {
 
     // 5. Progression Assertions
     upsilon.log("[WINNER] Game won. Checking rewards...");
-    let profile = upsilon.call("auth_login", { account_name: accountName, password: password });
-    upsilon.assert(profile.user.total_wins === 1, "Win count did not increment!");
+    let profile = upsilon.call("profile_get", {});
+    upsilon.assert(profile.total_wins === 1, "Win count did not increment!");
 
-    let char = profile.user.characters[0];
+    let characters = upsilon.call("profile_characters", {});
+    let char = characters[0];
     const initialTotal = char.hp + char.attack + char.defense + char.movement;
     upsilon.log(`[WINNER] Stats: HP=${char.hp}, ATK=${char.attack}, DEF=${char.defense}, MOV=${char.movement} (Total: ${initialTotal})`);
 

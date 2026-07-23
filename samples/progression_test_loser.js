@@ -14,14 +14,17 @@ upsilon.onTeardown(() => {
 });
 
 // Authentication
-upsilon.call("auth_register", { 
-    account_name: accountName, 
+upsilon.call("auth_register", {
+    account_name: accountName,
     email: accountName + "@example.com",
     password: password,
     password_confirmation: password,
     full_address: "456 Defeat Blvd, Lossville",
     birth_date: "1990-01-01"
 });
+
+// Phase-4 auth cutover: register no longer creates a roster — enroll first.
+upsilon.call("battle_enroll", {});
 
 // Join Matchmaking
 upsilon.call("matchmaking_join", { game_mode: "1v1_PVP" });

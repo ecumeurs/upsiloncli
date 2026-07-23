@@ -25,7 +25,11 @@ func (e *AuthLogin) Params() []Param {
 }
 
 func (e *AuthLogin) Next() []string {
-	return []string{"matchmaking_status", "matchmaking_join", "profile_get"}
+	// Phase-4 auth cutover: a login alone doesn't guarantee a roster exists
+	// (an account may have registered but never enrolled). Surface
+	// battle_enroll alongside the roster/matchmaking-dependent routes so the
+	// REPL/auto-flow doesn't dead-end a not-yet-enrolled account.
+	return []string{"battle_enroll", "matchmaking_status", "matchmaking_join", "profile_get"}
 }
 
 func (e *AuthLogin) ExecuteRaw(client *api.Client, sess *session.Session, inputs map[string]string) (*api.Response, error) {

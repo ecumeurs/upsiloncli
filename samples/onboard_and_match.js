@@ -22,6 +22,11 @@ if (regResponse && regResponse.token) {
     throw new Error("Onboarding failed");
 }
 
+// 1.5 Phase-4 auth cutover: register no longer creates a roster — enroll
+// into tactical battle before touching characters or matchmaking.
+upsilon.call("battle_enroll", {});
+upsilon.log("Enrollment successful. Roster provisioned.");
+
 // 2. Join a 1v1 PVE Match
 upsilon.log("Entering 1v1 PVE queue...");
 const joinResponse = upsilon.call("matchmaking_join", {

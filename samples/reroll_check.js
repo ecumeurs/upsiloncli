@@ -20,8 +20,12 @@ upsilon.onTeardown(() => {
     try { upsilon.call("auth_delete", {}); } catch (e) {}
 });
 
+// Phase-4 auth cutover: register no longer creates a roster — enroll first.
+upsilon.call("battle_enroll", {});
+
 let profile = upsilon.call("profile_get", {});
-let charId = profile.characters[0].id;
+let characters = upsilon.call("profile_characters", {});
+let charId = characters[0].id;
 let initialTotalWins = profile.total_wins;
 
 // Assert 0 total_wins initially
