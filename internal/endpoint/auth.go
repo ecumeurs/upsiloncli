@@ -98,7 +98,10 @@ func (e *AdminLogin) Execute(client *api.Client, sess *session.Session, inputs m
 type AuthRegister struct{}
 
 func (e *AuthRegister) Name() string        { return "auth_register" }
-func (e *AuthRegister) Description() string { return "Create account + initial roster, receive JWT" }
+// Phase-4 auth cutover: register now yields account + token ONLY — no
+// roster. Callers must follow with battle_enroll before touching characters,
+// matchmaking or game state.
+func (e *AuthRegister) Description() string { return "Create account, receive JWT (no roster — call battle_enroll next)" }
 func (e *AuthRegister) Method() string      { return "POST" }
 func (e *AuthRegister) Path() string        { return "/api/v1/auth/register" }
 func (e *AuthRegister) Auth() bool          { return false }
@@ -114,7 +117,7 @@ func (e *AuthRegister) Params() []Param {
 }
 
 func (e *AuthRegister) Next() []string {
-	return []string{"profile_get", "matchmaking_join"}
+	return []string{"battle_enroll"}
 }
 
 func (e *AuthRegister) ExecuteRaw(client *api.Client, sess *session.Session, inputs map[string]string) (*api.Response, error) {

@@ -228,6 +228,13 @@ func (a *Agent) jsHumanDelay() {
 	a.jsSleep(ms)
 }
 
+// jsBootstrapBot sequences a fresh bot's onboarding: register (account +
+// token only, Phase-4 auth cutover), enroll into tactical battle (creates
+// the roster + player_stats row), then rename the generated characters to
+// identifiable thematic names. Registers a teardown hook up front so any
+// step failing halfway still cleans up what succeeded.
+//
+// @spec-link [[mechanic_bot_enrollment]]
 func (a *Agent) jsBootstrapBot(call goja.FunctionCall) goja.Value {
 	if len(call.Arguments) < 2 {
 		panic(a.VM.ToValue("bootstrapBot requires at least (accountName, password)"))
@@ -293,9 +300,17 @@ func (a *Agent) jsBootstrapBot(call goja.FunctionCall) goja.Value {
 		a.throwStructuredError("Registration failed: " + err.Error())
 	}
 
+	// 4. Enroll into tactical battle. Post-Phase-4, auth_register hands back
+	// account + token only — the roster and player_stats row do not exist
+	// until this call succeeds. Without it, profile_characters below (and
+	// any subsequent matchmaking/game call) has nothing to act on.
+	if _, err := a.jsCall("battle_enroll", nil); err != nil {
+		a.throwStructuredError("Enrollment failed: " + err.Error())
+	}
+
 	a.jsLog("Bot bootstrapped successfully.")
 
-	// 4. Automatic Character Renaming to identifiable thematic names
+	// 5. Automatic Character Renaming to identifiable thematic names
 	// This ensures bots aren't all named "Character 1, 2, 3" which was a common complaint.
 	// We fetch characters and process the response directly as SyncSession may not pick up root arrays.
 	charsData, _ := a.jsCall("profile_characters", nil)

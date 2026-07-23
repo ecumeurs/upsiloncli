@@ -38,6 +38,10 @@ const regResponse = upsilon.call("auth_register", {
 });
 upsilon.assert(regResponse.user != null, "Registration failed");
 
+// Phase-4 auth cutover: register no longer creates a roster — enroll first.
+// @test-link [[mechanic_bot_enrollment]]
+upsilon.call("battle_enroll", {});
+
 const profile = upsilon.call("profile_characters", {});
 upsilon.assert(profile.length > 0, "No characters found");
 const char = profile[0];

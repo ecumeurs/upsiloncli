@@ -889,6 +889,9 @@ func RegisterAll(reg *Registry) {
 	reg.Register(&AdminShopItemUpdate{})
 	reg.Register(&AdminShopItemDelete{})
 
+	// Battle enrollment (Phase-4 auth cutover — roster/player_stats provisioning)
+	reg.Register(&BattleEnroll{})
+
 	// Profile & Characters
 	reg.Register(&ProfileGet{})
 	reg.Register(&ProfileCharacters{})

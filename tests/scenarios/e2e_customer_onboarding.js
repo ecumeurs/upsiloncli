@@ -19,13 +19,20 @@ const regResponse = upsilon.call("auth_register", {
     birth_date: "1990-01-01T00:00:00Z"
 });
 
-// ✅ Registration succeeds
+// ✅ Registration succeeds — Phase-4 auth cutover: account + token only,
+// no roster yet (register no longer creates characters).
 upsilon.assert(regResponse.user != null, "Registration failed");
 upsilon.log("✅ Registration succeeded");
 
-// 2. System creates account with initial 3-character roster
+// 2. Player enrolls into tactical battle — this is what creates the
+// initial 3-character roster + player_stats row (register alone does not).
+// @test-link [[mechanic_bot_enrollment]]
+upsilon.call("battle_enroll", {});
+upsilon.log("✅ Enrollment succeeded");
+
+// 3. System created the account with an initial 3-character roster
 // @test-link [[entity_player]]
-const characters = regResponse.user.characters;
+const characters = upsilon.call("profile_characters", {});
 upsilon.assertEquals(characters.length, 3, "Account should have exactly 3 characters");
 upsilon.log("✅ Account created with 3 characters");
 

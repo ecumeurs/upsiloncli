@@ -12,6 +12,7 @@ parents:
 dependents:
   - [[upsilonbattle:mechanic_script_lifecycle]]
   - [[upsilonbattle:mechanic_shared_memory]]
+  - [[mechanic_bot_enrollment]]
   - [[mechanic_script_admin_section]]
 ---
 
