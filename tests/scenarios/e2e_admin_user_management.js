@@ -28,12 +28,22 @@ upsilon.adminSection((admin) => {
     admin.assert(target != null, "Target bot must be in registry");
     admin.log(`Testing anonymization on: ${target.account_name}`);
 
-    // 4. Trigger Anonymize
-    const result = admin.call("admin_user_anonymize", {
-        account_name: target.account_name
-    });
+    // 4. Trigger Anonymize. admin.call throws on a non-2xx envelope, so reaching
+    //    the next line already means the server accepted it; the endpoint returns
+    //    an empty data payload (the success text rides the envelope message, which
+    //    admin.call does not surface) — so we verify the effect by re-reading the
+    //    registry rather than the response.
+    admin.call("admin_user_anonymize", { account_name: target.account_name });
+    admin.log(`Anonymization triggered for: ${target.account_name}`);
 
-    admin.log(`✅ Anonymization result: ${result.message}`);
+    // 5. Verify PII was overwritten. account_name is preserved by anonymize, and
+    //    the now-soft-deleted row still lists under the default with_trashed view.
+    const after = admin.call("admin_users", {});
+    const anonymized = after.items.find(u => u.account_name === targetBotName);
+    admin.assert(anonymized != null, "Anonymized account must still list (soft-deleted)");
+    admin.assert(anonymized.full_address === "ANONYMIZED", "Address must be overwritten with ANONYMIZED");
+    admin.assert(anonymized.deleted_at != null, "Anonymize must soft-delete the account");
+    admin.log(`✅ Verified anonymization of: ${anonymized.account_name}`);
 });
 
 upsilon.log("CR-15: ADMIN USER MANAGEMENT PASSED.");
