@@ -1,8 +1,6 @@
 # UpsilonCLI — API Journey Explorer & Tester
 
-**UpsilonCLI** is an interactive command-line tool for exploring and testing the Upsilon Battle API ecosystem. It provides transparent access to every Laravel Gateway endpoint, real-time WebSocket monitoring, and tactical board visualization — all from the terminal.
-
-**Tracking Issue:** [ISS-026](../issues/ISS-026_20260409_api_journey_tester_cli.md)
+**UpsilonCLI** is the terminal client for E2E testing and bot orchestration against the Upsilon platform: it exposes every REST endpoint served by the Upsilon Hub gateway (`/api/v1`) through an interactive REPL, follows the hub's real-time Server-Sent Events stream, renders the tactical battle board in ANSI, and can spin up parallel Goja-scripted JS bots for scenario and load testing — all from the terminal.
 
 ## Installation & Building
 
@@ -18,9 +16,13 @@ go build -o bin/upsiloncli ./cmd/upsiloncli
 ./bin/upsiloncli
 ```
 
-The CLI defaults to `http://localhost:8000` as the Laravel API base URL. Override with:
+`UPSILON_BASE_URL` is a mandatory environment variable — the CLI targets the hub's REST + SSE surface directly (there is no built-in default). Set it via `.env` or the shell, or override per run:
 ```bash
-./bin/upsiloncli --base-url http://custom-host:8000
+UPSILON_BASE_URL=http://localhost:8090 ./bin/upsiloncli
+./bin/upsiloncli --base-url http://custom-host:8090
+
+# Force the local devcontainer default (hub direct on 127.0.0.1:8090)
+./bin/upsiloncli --local
 ```
 
 ## Commands
@@ -32,7 +34,7 @@ The CLI defaults to `http://localhost:8000` as the Laravel API base URL. Overrid
 | `jwt` | Display the current JWT token. |
 | `jwt <token>` | Manually override the active JWT (for testing invalid/expired tokens). |
 | `session` | Display current session context (user_id, match_id, characters, etc.). |
-| `status` | Check end-to-end connectivity status (API & WebSocket). |
+| `status` | Check end-to-end connectivity status (API & SSE stream). |
 | `redraw` | Re-render the last known tactical board state. |
 | `help` | Show available commands. |
 | `exit` | Quit the CLI. |
@@ -44,7 +46,7 @@ The CLI provides a rich interactive experience powered by `readline`:
 - **TAB Completion**: Press `TAB` to autocomplete commands (`call`, `jwt`, `routes`, etc.) and API `route_name` identifiers.
 - **Shorthand Execution**: You don't need to type `call auth_login`. Typing a valid route name directly at the root prompt (e.g., `auth_login`) executes it immediately.
 - **Dynamic Prompt**: The prompt reflects your current state in real-time: `[auth:✓ user:alpha match:abc...] >`
-- **Smart Parameter Defaults**: When an endpoint requires a parameter like `match_id` or `character_id`, the CLI auto-suggests values captured from previous API responses or WebSocket events.
+- **Smart Parameter Defaults**: When an endpoint requires a parameter like `match_id` or `character_id`, the CLI auto-suggests values captured from previous API responses or SSE events.
 
 ## Real-time Event Stream (SSE)
 
@@ -56,9 +58,6 @@ UpsilonCLI maintains a background Server-Sent Events connection to the hub (`GET
     1. Sets the `match_id` in your session.
     2. Initializes match participants and the tactical grid.
 - **Tactical Feed**: Receives `board.updated` events and caches the state for instant rendering.
-
-> [!NOTE]
-> WebSocket connectivity is **disabled** in Direct-Call mode to ensure clean, non-interactive execution for scripts and agents.
 
 ## Tactical Board Visualization
 
@@ -111,7 +110,7 @@ UpsilonCLI can transform into a high-performance bot farm using the integrated *
 | Flag | Description |
 |---|---|
 | `--farm <script...>` | Execute one or more JavaScript files in parallel. Each script gets its own isolated network and session context ("Agent"). |
-| `--logs <dir>` / `-L` | Redirect all output (including internal CURL and WebSocket logs) to individual files in the specified directory. |
+| `--logs <dir>` / `-L` | Redirect all output (including internal CURL and SSE event logs) to individual files in the specified directory. |
 
 Example:
 ```bash
@@ -123,7 +122,7 @@ Example:
 Scripts have access to a global `upsilon` bridge to interact with the Go backend:
 
 - **`upsilon.call(route_name, params)`**: Execute any API endpoint. Returns a parsed JSON object.
-- **`upsilon.waitForEvent(event_name, timeout_ms)`**: Block execution until a specific WebSocket event is received.
+- **`upsilon.waitForEvent(event_name, timeout_ms)`**: Block execution until a specific realtime (SSE) event is received.
 - **`upsilon.log(message)`**: Print a message to the agent's output stream, prefixed with the Agent ID.
 - **`upsilon.getContext(key)` / `upsilon.setContext(key, value)`**: Read or write values from the agent's persistent session context.
 - **`upsilon.onTeardown(callback)`**: Register a function to run when the script exits or crashes ([[mechanic_script_lifecycle]]).
@@ -150,7 +149,7 @@ The [upsilon_log_parser.py](upsilon_log_parser.py) utility provides a structured
 Example:
 ```bash
 # Live filter tactical events from a bot farm
-./bin/upsiloncli --farm bot.js | python3 upsiloncli/upsilon_log_parser.py --filter
+./bin/upsiloncli --farm bot.js | python3 upsilon_log_parser.py --filter
 ```
 
 #### 3. Stress Testing & Performance Orchestration
@@ -208,23 +207,18 @@ The CLI tracks named values from API responses (e.g., `user_id`, `match_id`, `ch
 ## Dependencies
 
 - Go 1.25+
-- Upsilon Hub gateway (REST + SSE) reachable at `UPSILON_BASE_URL`
-- Upsilon Engine running on `localhost:8081`
+- Upsilon Hub gateway (REST `/api/v1` + SSE) reachable at `UPSILON_BASE_URL`
+- upsilonapi (the "Bridge", embeds the upsilonbattle engine), reached indirectly through the hub, typically on `:8081`
 
 ## Environment Variables
 
 | Variable | Description | Default |
 |---|---|---|
-| `UPSILON_BASE_URL` | API Gateway URL | (Required) |
+| `UPSILON_BASE_URL` | Hub API base URL (REST + SSE) | (Required) |
 
 
 ## Related Documentation
 
 - [Communication Reference](../communication.md)
-- [API Gateway ATD](../docs/api_laravel_gateway.atom.md)
-- [Matchmaking Flow](../docs/usecase_api_flow_matchmaking.atom.md)
-- [Game Turn Flow](../docs/usecase_api_flow_game_turn.atom.md)
-- [Token Renewal](../docs/mech_sanctum_token_renewal.atom.md)
-- [Script Farm MODULE](../docs/script_farm.atom.md)
-- [Agent Lifecycle MECHANIC](../docs/mechanic_script_lifecycle.atom.md)
-- [Shared Memory MECHANIC](../docs/mechanic_shared_memory.atom.md)
+- [Matchmaking Flow](../docs/us_api_flow_matchmaking.atom.md)
+- [Game Turn Flow](../docs/us_api_flow_game_turn.atom.md)
