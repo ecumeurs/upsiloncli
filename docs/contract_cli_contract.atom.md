@@ -3,8 +3,7 @@ id: contract_cli_contract
 status: STABLE
 version: 1.0
 tags: [governance, contract, cli]
-parents:
-  - [[shared:contract_upsilon_contract]]
+parents: []
 type: CONTRACT
 layer: BUSINESS
 priority: 1

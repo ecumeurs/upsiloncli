@@ -4,8 +4,7 @@ status: STABLE
 human_name: UpsilonCLI Vision
 type: VISION
 tags: [governance, vision, cli]
-parents:
-  - [[shared:vision_upsilon_vision]]
+parents: []
 dependents: []
 layer: BUSINESS
 version: 1.0
