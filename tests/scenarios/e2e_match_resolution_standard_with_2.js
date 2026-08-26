@@ -11,6 +11,15 @@ upsilon.log(`[Bot-${agentIndex}] Starting CR-08: Match Resolution (Standard)`);
 
 upsilon.bootstrapBot(accountName, password);
 const matchData = upsilon.joinWaitMatch("1v1_PVP");
+
+// Forfeit is only legal once the arena is in_progress
+// ([[upsilonbattle:specification_arena_lifecycle]]) -- match.found alone
+// (unblocked on by joinWaitMatch) fires before the engine's first tick, so
+// Bot-1's forfeit below can otherwise lose that race and hit 400
+// game.not.in.progress (ISS-102). Both bots wait for game.started, the
+// engine's own in_progress signal, before doing anything else.
+upsilon.waitForEvent("game.started", 15000);
+
 upsilon.syncGroup("res_start", 2);
 
 function pollProfile(predicate, deadlineMs) {

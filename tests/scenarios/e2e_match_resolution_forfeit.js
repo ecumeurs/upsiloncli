@@ -11,7 +11,16 @@ upsilon.log("Starting CR-09: Match Resolution (Forfeit) for " + accountName);
 upsilon.bootstrapBot(accountName, password);
 const matchData = upsilon.joinWaitMatch("1v1_PVE");
 
-// 1. Forfeit immediately.
+// 0. Forfeit is only legal once the arena has reached in_progress
+// ([[upsilonbattle:specification_arena_lifecycle]]) -- match.found (what
+// joinWaitMatch unblocks on) fires while the arena is still created/starting,
+// so a forfeit fired right after it can lose the race against the engine's
+// first tick and hit 400 game.not.in.progress (ISS-102). game.started is the
+// engine's own signal for that transition (ArenaState -> InProgress); wait
+// for it before touching the match. Same idiom as edge_ws_ping_timeout.js.
+upsilon.waitForEvent("game.started", 15000);
+
+// 1. Forfeit immediately (now that the arena is legally forfeitable).
 upsilon.log("Forfeiting match immediately...");
 upsilon.call("game_forfeit", { id: matchData.match_id });
 upsilon.log("✅ Forfeit command sent");
