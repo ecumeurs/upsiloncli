@@ -33,6 +33,10 @@ upsilon.call("auth_register", {
 });
 upsilon.call("auth_login", { account_name: attackerName, password: password });
 
+// Enrollment is a battle precondition even though this negative path targets
+// another player's character and should still fail at the ownership check.
+upsilon.call("battle_enroll", {});
+
 // Attacker tries to roll a skill for owner's character
 try {
     upsilon.call("character_skill_roll", { characterId: ownerCharId });
