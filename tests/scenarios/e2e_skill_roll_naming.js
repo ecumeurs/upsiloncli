@@ -21,7 +21,7 @@ const VALID_TAGS = new Set([
 ]);
 
 const RAW_PROPERTY_KEYS = new Set([
-    "Damage", "Heal", "Shield", "Accuracy", "Cooldown",
+    "DamageScale", "Heal", "ShieldPower", "Accuracy", "Cooldown",
     "HPLeech", "MPLeech", "SPLeech", "New Skill",
 ]);
 

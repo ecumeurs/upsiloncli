@@ -23,7 +23,7 @@ upsilon.adminSection((admin) => {
             Range: { value: 0, max: 10 }
         }, 
         costs: { MPLeech: 3 },
-        effect: { Type: "Damage", Value: 10 },
+        effect: { DamageScale: 150 },
         weight_positive: 10,
         weight_negative: 0,
         available: true

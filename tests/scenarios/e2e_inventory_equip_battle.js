@@ -56,7 +56,7 @@ upsilon.assert(me, "Equipped character must be present in the match");
 // 4. Verify Buffs
 // In Phase 4 engine integration, equipped items are projected as Forever=true buffs.
 // We check if our entity has buffs from both item origins.
-// NOTE: properties.Armor and properties.Attack should also be boosted.
+// NOTE: properties.ArmorRating and properties.Attack should also be boosted.
 const buffs = Array.from(me.buffs || []);
 
 

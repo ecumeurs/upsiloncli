@@ -26,9 +26,9 @@ upsilon.adminSection(() => {
         name: "Fireball",
         behavior: "Direct",
         grade: "I",
-        targeting: { Type: "Single", Range: 3 },
-        costs: { MP: 3 },
-        effect: { Type: "Damage", Value: 10 },
+        targeting: { Zone: "Single", Range: 3 },
+        costs: { MPLeech: 3 },
+        effect: { DamageScale: 150 },
         weight_positive: 10,
         weight_negative: 0,
         available: true

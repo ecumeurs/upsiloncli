@@ -62,7 +62,7 @@ upsilon.adminSection((admin) => {
         // {Type, Value} wrapper — bridge_utils.go's buildSkillEffect resolves
         // each raw key directly against the SkillProperties registry
         // (def.SkillProperty(property.SkillProperties(key))), so the key must
-        // be the actual property name ("Damage").
+        // be the actual property name ("DamageScale").
         //
         // The value is a PERCENTAGE of the caster's Attack, not flat damage:
         // truedmg = max((attack * damage / 100) - defense - armor, 0)
@@ -70,7 +70,7 @@ upsilon.adminSection((admin) => {
         // (upsilonhub character.NewBaseStats); 5000 (5000% of Attack) keeps
         // truedmg comfortably positive against any plausible enemy
         // defense/armor roll, including bosses or buffed foes.
-        effect: { Damage: 5000 },
+        effect: { DamageScale: 5000 },
         weight_positive: 10,
         weight_negative: 0,
         available: true
